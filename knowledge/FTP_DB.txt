@@ -18,4 +18,5 @@ User: tecnidepot__u_adm
 Pass: SvGeXf4y0BI$;?Bi
 
 ------------------------------------------------------------------
-
+GitHub
+https://github.com/dacadomx-collab/media-hub-core.git
