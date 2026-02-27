@@ -35,14 +35,7 @@ try {
         <p style='color:white;'>El motor de base de datos responde correctamente en el entorno: <b>" . htmlspecialchars($env['APP_ENV']) . "</b></p>
     </div>";
 
+// CAMBIA ESTO SOLO PARA PROBAR:
 } catch (PDOException $e) {
-    // Registro silencioso en seguridad.log
-    error_log("[" . date('Y-m-d H:i:s') . "] FALLO DB: " . $e->getMessage());
-    
-    // Error visual para el cliente (Sunset Orange)
-    echo "
-    <div style='background:#022D53; color:#FF5733; padding:30px; font-family:sans-serif; border-left:5px solid #FF5733; border-radius:8px;'>
-        <h2 style='margin:0;'>⚠️ Error de Sincronización</h2>
-        <p style='color:white;'>El incidente ha sido registrado en el log de seguridad para auditoría.</p>
-    </div>";
+    die("Error real: " . $e->getMessage());
 }
