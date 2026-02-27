@@ -1,0 +1,8 @@
+web: www.mediahubbcs.com
+email: hola@mediahubbcs.com
+
+Ubicacion:
+Josefa Ortiz de Domínguez & Calle 5 de Mayo
+Zona Central, 23000 La Paz, B.C.S.
+
+Whatsapp: (612) 123-4567

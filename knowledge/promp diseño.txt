@@ -1,0 +1,20 @@
+"Media HUB"
+
+Consultor experto en desarrollo de software para producción audiovisual y gestión logística de estudios de grabación.
+
+
+Ideas para el Logo (Símbolos de La Paz / BCS)
+Una vez que elijan el nombre, estos son los elementos simbólicos que podemos integrar en el prompt para que la IA capture la esencia de Baja California Sur:
+
+El Tiburón Ballena: Integrado de forma minimalista (solo los puntos o la silueta) mezclado con ondas de audio.
+
+El Kiosco del Malecón: Una abstracción geométrica que puede servir como marco para el nombre.
+
+La Cola de Ballena: Un clásico de BCS, pero podemos pedirle a la IA que la fusione con un lente de cámara o un micrófono.
+
+Atardeceres de La Paz: Usar un degradado de colores naranja/púrpura (típico de aquí) sobre un fondo azul profundo del mar.
+
+Borrador del Prompt para el Logo (Ajustable al nombre ganador)
+Cuando ya tengan el nombre, usaremos algo así (asumiendo que quieren algo simbólico de BCS):
+
+Prompt: "Professional logo for an audiovisual studio named [NOMBRE GANADOR]. The design must be a minimalist fusion of a high-tech sound wave and a stylized [SÍMBOLO ELEGIDO: ej. Whale tail or Whale shark patterns]. Style: Modern, flat vector, sleek. Use a color palette of Deep Sea Blue and Sunset Orange. Incorporate a subtle reference to the horizon of La Paz, Baja California Sur. High contrast, white background."

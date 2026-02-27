@@ -1,0 +1,21 @@
+URL: https://mediahub.tecnidepot.com/
+SubDominio: mediahub.tecnidepot.com
+Document Root (File System Location): /public_html/mediahub
+
+------------------------------------------------------------------
+***** FTP *****
+FTP Username: mediahubftp@tecnidepot.com
+pass: 5S!HZVry?3R-t$~e
+FTP server: ftp.tecnidepot.com
+FTP & explicit FTPS port:  21
+pasth: /home/tecnidepot/public_html/mediahub
+
+------------------------------------------------------------------
+Data Base
+
+Database: tecnidepot_mediahub_db
+User: tecnidepot__u_adm
+Pass: SvGeXf4y0BI$;?Bi
+
+------------------------------------------------------------------
+
