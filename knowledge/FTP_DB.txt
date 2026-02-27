@@ -11,6 +11,14 @@ FTP & explicit FTPS port:  21
 pasth: /home/tecnidepot/public_html/mediahub
 
 ------------------------------------------------------------------
+CPANEL
+https://mediahub.tecnidepot.com:2083/
+
+USERS
+user: david@mediahub.tecnidepot.com
+pass: @$zJE8-#{b%KDUWb
+
+------------------------------------------------------------------
 Data Base
 
 Database: tecnidepot_mediahub_db
