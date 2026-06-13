@@ -162,6 +162,16 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
           <p class="text-sm text-deep-sea/60 dark:text-digital-white/60">Cobertura unica en el Mar de Cortes para producciones especiales.</p>
         </div>
       </div>
+
+      <!-- Galeria del set: arsenal tecnologico (mobile-first, 1 col -> 2 col en md+) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-8">
+        <div class="rounded-2xl overflow-hidden border border-turquoise/15 shadow-sm aspect-video">
+          <img src="assets/img/estudio-5-de-mayo.jpg" alt="Set principal del Estudio 5 de Mayo con iluminacion LED, multicamara y panel de entrevistas" class="w-full h-full object-cover" loading="lazy" width="1600" height="900">
+        </div>
+        <div class="rounded-2xl overflow-hidden border border-turquoise/15 shadow-sm aspect-video">
+          <img src="assets/img/estudio-5-de-mayo-2.jpg" alt="Vista panoramica del croma verde y la mesa de panel del Estudio 5 de Mayo" class="w-full h-full object-cover" loading="lazy" width="1600" height="900">
+        </div>
+      </div>
     </div>
   </section>
 
@@ -191,22 +201,26 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
           </li>
         </ul>
       </div>
-      <div class="rounded-3xl p-8 bg-deep-sea dark:bg-[#031f3c] border border-turquoise/20 shadow-xl">
-        <div class="flex items-center gap-3 mb-6">
-          <span class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></span>
-          <span class="text-digital-white font-display font-bold tracking-widest text-sm">EN VIVO</span>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div class="rounded-xl bg-white/5 border border-turquoise/20 p-4 text-center">
-            <p class="text-digital-white font-display font-bold">Facebook</p>
-            <p class="text-turquoise text-xs mt-1">Transmitiendo</p>
+      <div class="relative rounded-3xl overflow-hidden border border-turquoise/20 shadow-xl min-h-[320px]">
+        <img src="assets/img/simulcast-streaming-live.jpg" alt="Equipo de produccion de Media HUB preparando una transmision en vivo en el set" class="absolute inset-0 w-full h-full object-cover" loading="lazy" width="1600" height="1200">
+        <div class="absolute inset-0 bg-deep-sea/85 dark:bg-[#031f3c]/90"></div>
+        <div class="relative p-8">
+          <div class="flex items-center gap-3 mb-6">
+            <span class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></span>
+            <span class="text-digital-white font-display font-bold tracking-widest text-sm">EN VIVO</span>
           </div>
-          <div class="rounded-xl bg-white/5 border border-turquoise/20 p-4 text-center">
-            <p class="text-digital-white font-display font-bold">YouTube</p>
-            <p class="text-turquoise text-xs mt-1">Transmitiendo</p>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="rounded-xl bg-white/5 border border-turquoise/20 p-4 text-center">
+              <p class="text-digital-white font-display font-bold">Facebook</p>
+              <p class="text-turquoise text-xs mt-1">Transmitiendo</p>
+            </div>
+            <div class="rounded-xl bg-white/5 border border-turquoise/20 p-4 text-center">
+              <p class="text-digital-white font-display font-bold">YouTube</p>
+              <p class="text-turquoise text-xs mt-1">Transmitiendo</p>
+            </div>
           </div>
+          <p class="text-digital-white/50 text-xs mt-6 text-center">Estudio 5 de Mayo &mdash; Media HUB Control Room</p>
         </div>
-        <p class="text-digital-white/50 text-xs mt-6 text-center">Estudio 5 de Mayo &mdash; Media HUB Control Room</p>
       </div>
     </div>
   </section>

@@ -301,8 +301,14 @@ $isAdmin         = $user['role'] === 'Administrador';
 
         <!-- ============ C) CONSOLA DE CHECKLISTS DE SET ============ -->
         <section id="checklist" class="space-y-4">
-          <h2 class="font-display font-bold text-lg">Checklist Operativo de Set</h2>
-          <p class="text-sm text-slate-500 dark:text-digital-white/60">Protocolos normativos del Estudio 5 de Mayo &mdash; Antes, Durante y Despues del llamado.</p>
+          <div class="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-turquoise/10 h-28 sm:h-36">
+            <img src="../assets/img/estudio-5-de-mayo-2.jpg" alt="Set del Estudio 5 de Mayo con croma verde y equipo de iluminacion" class="absolute inset-0 w-full h-full object-cover" loading="lazy" width="1600" height="900">
+            <div class="absolute inset-0 bg-gradient-to-r from-deep-sea/90 via-deep-sea/50 to-transparent dark:from-[#031f3c]/95 dark:via-[#031f3c]/55"></div>
+            <div class="absolute inset-0 flex flex-col justify-center px-4 sm:px-6">
+              <h2 class="font-display font-bold text-lg sm:text-xl text-white">Checklist Operativo de Set</h2>
+              <p class="text-xs sm:text-sm text-white/70 max-w-md">Protocolos normativos del Estudio 5 de Mayo &mdash; Antes, Durante y Despues del llamado.</p>
+            </div>
+          </div>
 
           <div class="rounded-2xl border border-slate-200 dark:border-turquoise/10 bg-white dark:bg-[#01243f] p-4 sm:p-5 space-y-4">
             <label class="field-label">Selecciona un llamado
