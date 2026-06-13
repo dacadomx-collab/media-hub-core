@@ -19,12 +19,14 @@ jobs:
         password: ${{ secrets.FTP_PASSWORD }}
         server-dir: ${{ secrets.FTP_PATH }}
         exclude: |
-          **/.git*
-          **/.github*
+          .git/**
+          **/.git/**
+          .github/**
+          **/.github/**
           .env
-          seguridad.log
-          genesis.php
-          setup_superadmin.php
-          db_test.php
-          test_hub_connection.php
-          knowledge/**
+          **/database/**
+          **/knowledge/**
+          **/api/test_integration.php
+          **/genesis.php
+          **/db_test.php
+          **/setup_superadmin.php
