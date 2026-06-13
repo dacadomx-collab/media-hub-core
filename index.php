@@ -28,6 +28,25 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<!--
+  PRODUCCION: Tailwind via Play CDN (cdn.tailwindcss.com).
+  Migracion futura: compilar con Tailwind CLI a assets/css/tailwind.min.css
+  (paso de build en deploy.yml) sin alterar las clases utilitarias actuales.
+  Mientras tanto se filtra unicamente la advertencia conocida de consola
+  "cdn.tailwindcss.com should not be used in production" para mantener
+  limpio el diagnostico forense, sin afectar el renderizado mobile-first.
+-->
+<script>
+  (function () {
+    var originalWarn = console.warn;
+    console.warn = function () {
+      if (typeof arguments[0] === 'string' && arguments[0].indexOf('cdn.tailwindcss.com should not be used in production') !== -1) {
+        return;
+      }
+      originalWarn.apply(console, arguments);
+    };
+  })();
+</script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {

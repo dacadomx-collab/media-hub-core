@@ -322,4 +322,20 @@
 
 ---
 
+## APENDICE — PUENTE FORENSE DE PRODUCCION Y AUDITORIA TAILWIND (FASE 4.2)
+
+- [X] **Puente de diagnostico forense seguro (`api/login.php`)**: en los bloques `catch (PDOException)` / `catch (RuntimeException)`, si `MH_DEBUG_TOKEN` (definido en `.env`, fuera del repo) coincide via `hash_equals()` con `?debug_token=` de la URL, se imprime `get_class($e)`, `$e->getMessage()`, `$e->getFile()`/`getLine()` y `getTraceAsString()` en texto plano. Sin token o sin coincidencia, degrada siempre a `header('Location: ../index.php?error=server')` (ruta relativa). Permite diagnosticar en caliente en GreenGeeks `.env` ausente/invalido o credenciales de MySQL remoto rechazadas, sin exponer nada a usuarios publicos.
+  - [X] `.env` local actualizado con `MH_DEBUG_TOKEN` (gitignored, no se sube al repo — debe configurarse manualmente en el `.env` de GreenGeeks para activar el puente en produccion).
+- [X] **Advertencia de consola Tailwind CDN (`index.php` y `dashboard/index.php`)**: se agrego un comentario estructurado documentando la migracion futura a Tailwind CLI (build step en `deploy.yml`) y un filtro minimo de `console.warn` que oculta unicamente el mensaje "cdn.tailwindcss.com should not be used in production", sin alterar clases utilitarias ni el renderizado mobile-first (Deep Sea Blue / Turquesa).
+
+---
+
+## APENDICE — PARSER .ENV TOLERANTE A FALLOS (FASE 4.3)
+
+- [X] **Refactor del cargador de entorno (`config/Database.php`)**: se reemplazo `parse_ini_file()` (rompia por completo al encontrar `$`, `;` o `=` adicionales dentro de `DB_PASS` reales de cPanel GreenGeeks, devolviendo `false` para todo el archivo) por `Database::parseEnvFile()`, un lector linea por linea con `file()`. Ignora comentarios (`#`/`;` al inicio de linea), separa clave/valor por el PRIMER `=`, aplica `trim()` y remueve unicamente comillas envolventes (simples o dobles) sin tocar `$`/`;` internos. Si falta `DB_HOST`, `DB_NAME`, `DB_USER` o `DB_PASS`, el `RuntimeException` detalla las llaves faltantes solo si `MH_DEBUG_TOKEN` coincide via `hash_equals()` con `?debug_token=`; en caso contrario el mensaje permanece generico ("Configuracion de entorno incompleta.").
+  - [X] `Database::loadEnv()` (estatico, cacheado) expone el `.env` parseado para consumidores internos; `api/response.php::mh_app_env()` ahora delega en `Database::loadEnv()` en lugar de su propio `parse_ini_file()`, eliminando el mismo punto de falla en el puente forense de `api/login.php`.
+- [X] **Sensor de continuidad (`api/debug_db.php`)**: invoca `Database::loadEnv()` para listar (sin exponer valores) que llaves de `DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASS` se detectaron antes de intentar la conexion, y separa el `catch` en `RuntimeException` (entorno invalido) vs `PDOException` (rechazo real de MySQL: usuario/prefijo/privilegios de cPanel), imprimiendo el mensaje exacto de cada caso.
+
+---
+
 *Este checklist es la fuente de verdad de tareas backend para Media HUB V2. Cada casilla marcada debe corresponder a codigo verificado con `php -l`, pruebas funcionales del endpoint y, cuando aplique, una migracion aditiva documentada en `database/`. No se debe marcar una tarea como completada si introduce una regresion en los modulos vigentes de Fase 1/Fase 2.*

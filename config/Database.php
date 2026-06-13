@@ -7,6 +7,7 @@
 class Database
 {
     private static ?Database $instance = null;
+    private static ?array $env = null;
     private PDO $connection;
 
     private function __construct()
@@ -17,26 +18,28 @@ class Database
             throw new RuntimeException('Archivo .env no encontrado en la raiz del proyecto.');
         }
 
-        $previousHandler = set_error_handler(function (): bool {
-            return true; // Silencia el warning nativo; el fallo se evalua via el valor de retorno.
-        });
-
-        try {
-            $env = parse_ini_file($envFile, false, INI_SCANNER_RAW);
-        } finally {
-            restore_error_handler();
-        }
-
-        if ($env === false) {
-            throw new RuntimeException('Configuracion de entorno invalida.');
-        }
+        $env = self::loadEnv();
 
         $required = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS'];
+        $missing  = [];
 
         foreach ($required as $key) {
             if (!array_key_exists($key, $env) || $env[$key] === '') {
-                throw new RuntimeException('Configuracion de entorno incompleta.');
+                $missing[] = $key;
             }
+        }
+
+        if (!empty($missing)) {
+            $debugToken    = $env['MH_DEBUG_TOKEN'] ?? '';
+            $providedToken = (string) ($_GET['debug_token'] ?? '');
+
+            if ($debugToken !== '' && hash_equals($debugToken, $providedToken)) {
+                throw new RuntimeException(
+                    'Configuracion de entorno incompleta. Variables faltantes o vacias: ' . implode(', ', $missing)
+                );
+            }
+
+            throw new RuntimeException('Configuracion de entorno incompleta.');
         }
 
         $host    = $env['DB_HOST'];
@@ -68,6 +71,81 @@ class Database
     public function getConnection(): PDO
     {
         return $this->connection;
+    }
+
+    /**
+     * Carga y cachea el .env de la raiz del proyecto usando un lector de
+     * lineas propio (ver parseEnvFile). Devuelve [] si el archivo no existe,
+     * para que llamadas auxiliares (ej. mh_app_env) degraden con seguridad.
+     */
+    public static function loadEnv(): array
+    {
+        if (self::$env === null) {
+            $envFile  = __DIR__ . '/../.env';
+            self::$env = file_exists($envFile) ? self::parseEnvFile($envFile) : [];
+        }
+
+        return self::$env;
+    }
+
+    /**
+     * Lector de archivos .env tolerante a fallos, linea por linea.
+     *
+     * Reemplaza a parse_ini_file(), que en GreenGeeks rompe (devuelve
+     * false para todo el archivo) cuando una contrasena real contiene
+     * signos de pesos ($), punto y coma (;) u otros caracteres especiales
+     * de sintaxis INI. Reglas:
+     *  - Ignora lineas vacias y comentarios que comienzan con # o ;.
+     *  - Separa clave/valor por el PRIMER signo de igual (=) de la linea,
+     *    de modo que el valor puede contener = adicionales.
+     *  - trim() en clave y valor.
+     *  - Si el valor viene envuelto en comillas simples o dobles, remueve
+     *    unicamente esas comillas de los extremos, preservando intacto
+     *    cualquier $, ; u otro simbolo especial en el interior.
+     */
+    private static function parseEnvFile(string $path): array
+    {
+        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+        if ($lines === false) {
+            return [];
+        }
+
+        $env = [];
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+
+            if ($line === '' || $line[0] === '#' || $line[0] === ';') {
+                continue;
+            }
+
+            $separator = strpos($line, '=');
+
+            if ($separator === false) {
+                continue;
+            }
+
+            $key   = trim(substr($line, 0, $separator));
+            $value = trim(substr($line, $separator + 1));
+
+            $length = strlen($value);
+
+            if ($length >= 2) {
+                $first = $value[0];
+                $last  = $value[$length - 1];
+
+                if (($first === '"' && $last === '"') || ($first === "'" && $last === "'")) {
+                    $value = substr($value, 1, $length - 2);
+                }
+            }
+
+            if ($key !== '') {
+                $env[$key] = $value;
+            }
+        }
+
+        return $env;
     }
 
     private function __clone()

@@ -13,12 +13,7 @@
  */
 function mh_app_env(string $key, string $default = ''): string
 {
-    static $env = null;
-
-    if ($env === null) {
-        $envFile = __DIR__ . '/../.env';
-        $env     = file_exists($envFile) ? (parse_ini_file($envFile) ?: []) : [];
-    }
+    $env = Database::loadEnv();
 
     $value = $env[$key] ?? '';
 

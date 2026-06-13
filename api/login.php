@@ -17,8 +17,40 @@ session_start();
 require_once __DIR__ . '/../config/Database.php';
 require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/response.php';
 
 const MH_MAX_FAILED_ATTEMPTS = 5;
+
+/**
+ * Puente de diagnostico forense seguro.
+ * Si MH_DEBUG_TOKEN esta configurado en .env y coincide con ?debug_token=
+ * de la URL, imprime el mensaje crudo de la excepcion y su origen en lugar
+ * de la redireccion ciega a ?error=server. Permite confirmar en caliente en
+ * GreenGeeks si el fallo es .env ausente/invalido, credenciales de MySQL
+ * remoto rechazadas, etc. Sin token o sin coincidencia, degrada siempre a
+ * la redireccion segura (no revela nada a usuarios publicos).
+ */
+function mh_forensic_or_redirect(Throwable $e, string $context): never
+{
+    error_log("MH-CORE {$context} en api/login.php: " . $e->getMessage());
+
+    $expectedToken = mh_app_env('MH_DEBUG_TOKEN', '');
+    $providedToken = (string) ($_GET['debug_token'] ?? '');
+
+    if ($expectedToken !== '' && hash_equals($expectedToken, $providedToken)) {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "MH-CORE FORENSIC BRIDGE - {$context}\n";
+        echo str_repeat('=', 60) . "\n";
+        echo 'Exception: ' . get_class($e) . "\n";
+        echo 'Message  : ' . $e->getMessage() . "\n";
+        echo 'File     : ' . $e->getFile() . ':' . $e->getLine() . "\n";
+        echo "\nTrace:\n" . $e->getTraceAsString() . "\n";
+        exit;
+    }
+
+    header('Location: ../index.php?error=server');
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: ../index.php');
@@ -125,11 +157,7 @@ try {
     header('Location: ../dashboard/index.php');
     exit;
 } catch (PDOException $e) {
-    error_log('MH-CORE DB error en api/login.php: ' . $e->getMessage());
-    header('Location: ../index.php?error=server');
-    exit;
+    mh_forensic_or_redirect($e, 'DB error');
 } catch (RuntimeException $e) {
-    error_log('MH-CORE config error en api/login.php: ' . $e->getMessage());
-    header('Location: ../index.php?error=server');
-    exit;
+    mh_forensic_or_redirect($e, 'config error');
 }
