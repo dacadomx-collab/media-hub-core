@@ -37,5 +37,5 @@ try {
 
 // CAMBIA ESTO SOLO PARA PROBAR:
 } catch (PDOException $e) {
-    die("Error real: " . $e->getMessage());
+    die("Error real: " . $e->getMessage());l
 }

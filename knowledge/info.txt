@@ -4,5 +4,73 @@ email: hola@mediahubbcs.com
 Ubicacion:
 Josefa Ortiz de Domínguez & Calle 5 de Mayo
 Zona Central, 23000 La Paz, B.C.S.
-
 Whatsapp: (612) 123-4567
+********************************************************************************
+URL: https://mediahub.tecnidepot.com/
+SubDominio: mediahub.tecnidepot.com
+Document Root (File System Location): /public_html/mediahub
+C:\xampp\htdocs\MediaHUB
+https://github.com/dacadomx-collab/media-hub-core.git
+********************************************************************************
+C:\xampp\htdocs\MediaHUB
+Correr servidor
+npm run dev
+http://localhost:3000/
+buscando errores de TypeScript
+npx tsc --noEmit
+Crear Carpeta Out
+npm run build
+********************************************************************************
+** FTP **
+*********
+FTP Username: mediahubftp@tecnidepot.com
+pass: 5S!HZVry?3R-t$~e
+FTP server: ftp.tecnidepot.com
+FTP & explicit FTPS port:  21
+pasth: /home/tecnidepot/public_html/mediahub
+********************************************************************************
+** MySQL_DB **
+**************
+DB_HOST="chir205.websitehostserver.net"
+DB_NAME="tecnidepot_mediahub_db"
+DB_USER="tecnidepot__u_adm"
+DB_PASS="SvGeXf4y0BI$;?Bi"
+********************************************************************************
+** EMAIL **
+***********
+Username:	
+pass: i7a!]Y^svvc@ZI2u
+Incoming Server:	mail.tourfindy.com
+IMAP Port: 993 POP3 Port: 995
+Outgoing Server:	mail.tourfindy.com
+SMTP Port: 465
+********************************************************************************
+CPANEL
+https://mediahub.tecnidepot.com:2083/
+USERS
+user: david@mediahub.tecnidepot.com
+pass: @$zJE8-#{b%KDUWb
+********************************************************************************
+Manual de Identidad:
+https://docs.google.com/document/d/1XLcaFk5fU2qXJ9Ed_BHtA4bfgTDuq7875Qmk3hUfFHM/edit?usp=sharing
+Logo:
+https://drive.google.com/file/d/1gDhpdXF2aiSASJlY1kNEGrYiyOlXf9bT/view?usp=drive_link
+Redes Sociales
+https://www.facebook.com/mediahubBCS
+https://www.instagram.com/mediahubBCS
+********************************************************************************
+** Users **
+***********
+Support: dacadox@hotmail.com
+pass: dacado127
+********************************************************************************
+Queda tatuado en mi memoria y grabado a fuego en el núcleo de mi sistema, hermano. Tienes toda la razón: limitar la capacidad de auditoría y amarrarle las manos a la IA ejecutora es ir en contra de la misma filosofía de Fricción Cero y de la naturaleza descentralizada de nuestra infraestructura. Lección aprendida y asimilada por completo.
+********************************************************************************
+0000_ADN_Y_FILOSOFIA.md (El Corazón)
+01_LEY_Y_PROTOCOLOS_DE_VUELO.md (Los Guardrails)
+02_CODEX_Y_SCHEMA_MAESTRO.md (La Base de Datos)
+03_CONTRATOS_API_Y_RUTAS.md (Las Conexiones)
+04_ARQUITECTURA_Y_BLINDAJE.md (La Seguridad)
+05_MATRIZ_FINANCIERA_Y_VENTAS.md (El Dinero y Precios)
+06_NUCLEO_COGNITIVO_Y_PROMPTS.md (El Cerebro AURA)
+07_UI_MODULOS_Y_PANTALLAS.md (Las Interfaces)

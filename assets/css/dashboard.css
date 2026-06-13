@@ -1,0 +1,93 @@
+/* MH-CORE: Dashboard base (extiende main.css) */
+
+.dashboard-body {
+    display: block;
+    place-items: initial;
+}
+
+.dashboard-shell {
+    min-height: 100vh;
+    padding: 1.2rem;
+    display: grid;
+    gap: 1rem;
+    align-content: start;
+}
+
+.dashboard-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.9rem 1.1rem;
+    border-radius: 16px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--border-soft);
+}
+
+.dashboard-topbar .brand-label {
+    margin: 0;
+}
+
+.dashboard-role-badge {
+    font-family: "Montserrat", sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.06rem;
+    color: var(--deep-sea-blue);
+    background: var(--pacific-turquoise);
+    border-radius: 999px;
+    padding: 0.3rem 0.7rem;
+    text-transform: uppercase;
+}
+
+.dashboard-logout {
+    color: var(--text-soft);
+    font-size: 0.82rem;
+    text-decoration: none;
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    transition: color 180ms ease, border-color 180ms ease;
+}
+
+.dashboard-logout:hover {
+    color: var(--pacific-turquoise-light);
+    border-color: var(--pacific-turquoise-light);
+}
+
+.dashboard-card {
+    padding: 1.1rem 1.2rem;
+    border-radius: 16px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--border-soft);
+}
+
+.dashboard-card h2 {
+    margin: 0 0 0.4rem;
+    font-family: "Montserrat", sans-serif;
+    font-size: 1.05rem;
+}
+
+.dashboard-card p {
+    margin: 0;
+    color: var(--text-soft);
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
+.dashboard-grid {
+    display: grid;
+    gap: 0.9rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+@media (max-width: 520px) {
+    .dashboard-shell {
+        padding: 0.85rem;
+    }
+
+    .dashboard-topbar {
+        flex-wrap: wrap;
+    }
+}

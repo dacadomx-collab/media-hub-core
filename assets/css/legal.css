@@ -1,0 +1,86 @@
+/* MH-CORE: Firma Digital de Reglamentos (extiende main.css) */
+
+.legal-shell {
+    width: min(620px, 100%);
+    max-height: 92vh;
+    overflow-y: auto;
+}
+
+.legal-form {
+    display: grid;
+    gap: 0.85rem;
+    margin-top: 0.5rem;
+}
+
+.legal-doc-list {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.legal-doc {
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    background: var(--field-bg);
+    padding: 0.65rem 0.85rem;
+}
+
+.legal-doc summary {
+    cursor: pointer;
+    font-family: "Montserrat", sans-serif;
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: var(--text-main);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    list-style: none;
+}
+
+.legal-doc summary::-webkit-details-marker {
+    display: none;
+}
+
+.legal-doc-version {
+    font-size: 0.7rem;
+    color: var(--text-soft);
+    white-space: nowrap;
+}
+
+.legal-doc-content {
+    margin-top: 0.6rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-soft);
+    max-height: 180px;
+    overflow-y: auto;
+    padding-right: 0.3rem;
+}
+
+.legal-ack {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.7rem;
+    font-size: 0.82rem;
+    color: var(--text-main);
+}
+
+.legal-ack input[type="checkbox"] {
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.1rem;
+    accent-color: var(--pacific-turquoise);
+    flex-shrink: 0;
+}
+
+@media (max-width: 520px) {
+    .legal-shell {
+        padding: 1.1rem;
+        max-height: 96vh;
+    }
+
+    .legal-doc-content {
+        max-height: 140px;
+    }
+}

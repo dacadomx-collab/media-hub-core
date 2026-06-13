@@ -85,3 +85,53 @@ Regla sugerida de negocio para seguridad automatizada:
 2. Toda consulta de autenticacion debe incluir validacion de `status` ademas de contrasena.
 3. Mantener migraciones compatibles con `InnoDB` y `utf8mb4_general_ci`.
 4. Cualquier ajuste de seguridad debe reflejarse primero en este documento antes de desplegarse.
+
+## Amendment Fase 1: Organigrama Digital y Modulos Operativos
+
+Aprobado como parte del arranque de Fase 1 (Backend). El script canonico y
+ejecutable de todas las tablas vive en `database/schema.sql`; este documento
+resume los cambios de arquitectura.
+
+### 1) Extension de `users`
+
+- `email` (`VARCHAR(150)`, `UNIQUE`, `NOT NULL`): identificador de login, usado por `index.php` / `process_login.php`.
+- `role` se amplia a:
+  `ENUM('Administrador','Lider_Proyecto','Staff_Tecnico','Chofer_Logistica','Cliente')`.
+  - `Administrador`: control total.
+  - `Lider_Proyecto`: supervision de programas, agenda y staff (ej. German Lage).
+  - `Staff_Tecnico`: produccion en locacion (ej. Gibran Morales, Antonio Murillo).
+  - `Chofer_Logistica`: operacion de unidades moviles.
+  - `Cliente`: acceso restringido a su propio programa/agenda.
+
+### 2) Modulo Legal (`legal_documents`, `user_legal_signatures`)
+
+- `legal_documents` almacena los 4 reglamentos inmutables: Contrato de Staff,
+  Reglas del Estudio, Reglas por Grabacion y Reglas Generales.
+- `user_legal_signatures` mantiene una bandera `signed` por usuario/documento.
+- Regla de acceso estricta: si existe al menos un registro con `signed = 0`
+  para el usuario autenticado, `process_login.php` redirige forzosamente a
+  `legal/firma.php`, bloqueando el Dashboard hasta firmar todos los documentos.
+
+### 3) Programas y Clientes Jornal (`clients`, `programs`)
+
+- `clients` registra clientes recurrentes (ej. Dr. Efrain Torres, Efrain Torres / CCBCS).
+- `programs` vincula cada show recurrente a un cliente (ej. "Medicina del Siglo XXI", "CCBCS").
+
+### 4) Agenda Inteligente (`calls`, `call_assignments`)
+
+- `calls` representa cada llamado/booking. Indice `idx_call_collision`
+  (`location`, `call_date`, `start_time`, `end_time`) soporta la validacion
+  de colisiones que la capa de aplicacion debe ejecutar antes de insertar
+  un nuevo llamado en `Estudio 5 de Mayo`.
+- `advance_required_pct` (default `50.00`) y `advance_paid` modelan el
+  requisito de anticipo del 50% para liberar el llamado en la agenda del staff.
+- `call_assignments` asocia tareas especificas por llamado a cada usuario
+  (alimenta la lista de tareas que cada perfil ve en su sesion).
+
+### 5) Inventario y Flota (`inventory_items`, `fleet_vehicles`, `checkinout_log`)
+
+- `inventory_items` (camaras, opticas, luces LED, audio) y `fleet_vehicles`
+  (Van Terrestre, Embarcacion Maritima) comparten el mismo flujo de estados:
+  `ENUM('Disponible','En Uso','Mantenimiento')`.
+- `checkinout_log` registra cada accion `Check-In`/`Check-Out` digital,
+  vinculando opcionalmente el llamado (`call_id`) y el usuario responsable.
