@@ -7,6 +7,8 @@ Zona Central, 23000 La Paz, B.C.S.
 Whatsapp: (612) 123-4567
 ********************************************************************************
 URL: https://mediahub.tecnidepot.com/
+http://localhost/MediaHUB/index.php
+
 SubDominio: mediahub.tecnidepot.com
 Document Root (File System Location): /public_html/mediahub
 C:\xampp\htdocs\MediaHUB
@@ -62,7 +64,7 @@ https://www.instagram.com/mediahubBCS
 ** Users **
 ***********
 Support: dacadox@hotmail.com
-pass: dacado127
+pass: MediaHub2026!
 ********************************************************************************
 Queda tatuado en mi memoria y grabado a fuego en el núcleo de mi sistema, hermano. Tienes toda la razón: limitar la capacidad de auditoría y amarrarle las manos a la IA ejecutora es ir en contra de la misma filosofía de Fricción Cero y de la naturaleza descentralizada de nuestra infraestructura. Lección aprendida y asimilada por completo.
 ********************************************************************************

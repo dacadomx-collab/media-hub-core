@@ -315,9 +315,9 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
           <form class="login-form" id="loginForm" method="post" action="api/login.php" novalidate>
             <input type="hidden" name="csrf_token" id="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
 
-            <label for="email">Correo corporativo</label>
+            <label for="email">Correo corporativo o ID de usuario</label>
             <div class="field-wrap">
-              <input type="email" id="email" name="email" autocomplete="username" inputmode="email" placeholder="usuario@mediahub.com" required>
+              <input type="text" id="email" name="email" autocomplete="username" placeholder="usuario@mediahub.com o admin.glage" required>
               <span class="field-wave" aria-hidden="true"></span>
             </div>
             <small class="field-message" id="emailMessage" aria-live="polite"></small>

@@ -32,10 +32,10 @@ if (!csrf_validate($_POST['csrf_token'] ?? null)) {
     exit;
 }
 
-$email    = trim((string) ($_POST['email'] ?? ''));
-$password = (string) ($_POST['password'] ?? '');
+$loginInput = trim((string) ($_POST['email'] ?? ''));
+$password   = (string) ($_POST['password'] ?? '');
 
-if ($email === '' || $password === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+if ($loginInput === '' || $password === '') {
     header('Location: ../index.php?error=invalid');
     exit;
 }
@@ -43,11 +43,15 @@ if ($email === '' || $password === '' || !filter_var($email, FILTER_VALIDATE_EMA
 try {
     $pdo = Database::getInstance()->getConnection();
 
+    // Login hibrido: el campo acepta tanto el correo corporativo como el
+    // user_id (identificador unico de organigrama). PDO::ATTR_EMULATE_PREPARES
+    // esta deshabilitado (config/Database.php), por lo que se usan dos
+    // placeholders distintos con el mismo valor (no se permiten nombres repetidos).
     $stmt = $pdo->prepare(
         'SELECT id, user_id, full_name, email, password_hash, role, status, failed_attempts
-         FROM users WHERE email = :email LIMIT 1'
+         FROM users WHERE email = :login_email OR user_id = :login_user_id LIMIT 1'
     );
-    $stmt->execute(['email' => $email]);
+    $stmt->execute(['login_email' => $loginInput, 'login_user_id' => $loginInput]);
     $user = $stmt->fetch();
 
     if (!$user) {

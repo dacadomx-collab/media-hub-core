@@ -43,17 +43,20 @@
         const value = email.value.trim();
 
         if (!value) {
-            setFieldState(email, messages.email, false, "Ingresa tu correo.");
+            setFieldState(email, messages.email, false, "Ingresa tu correo o ID de usuario.");
             return false;
         }
 
+        // Login hibrido: acepta correo corporativo (usuario@dominio.tld)
+        // o el user_id del organigrama (ej. admin.glage, logistica.gmorales).
         const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-        if (!emailPattern.test(value)) {
-            setFieldState(email, messages.email, false, "Formato de correo inválido.");
+        const userIdPattern = /^[a-zA-Z0-9_.]{3,50}$/;
+        if (!emailPattern.test(value) && !userIdPattern.test(value)) {
+            setFieldState(email, messages.email, false, "Formato de correo o ID de usuario invalido.");
             return false;
         }
 
-        setFieldState(email, messages.email, cleaned ? true : false, "Correo verificado.");
+        setFieldState(email, messages.email, cleaned ? true : false, "Identificador verificado.");
         return cleaned;
     };
 

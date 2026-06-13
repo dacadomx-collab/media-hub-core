@@ -313,4 +313,13 @@
 
 ---
 
+## APENDICE — AUDITORIA DE DESPLIEGUE GREENGEEKS (FASE 4.1)
+
+- [X] **Login hibrido (`api/login.php`)**: el campo del formulario acepta correo electronico (`email`) o identificador unico (`user_id`). Query: `WHERE email = :login_email OR user_id = :login_user_id` (placeholders distintos por `PDO::ATTR_EMULATE_PREPARES = false`). Bcrypt cost=12, CSRF y redirecciones relativas (`../index.php`, `../legal/firma.php`, `../dashboard/index.php`) intactas.
+  - [X] `index.php`: input `#email` cambiado de `type="email"` a `type="text"` (label "Correo corporativo o ID de usuario") para no bloquear via validacion HTML5 el ingreso de `user_id`.
+  - [X] `assets/js/login.js`: `validateEmail()` acepta formato de correo O patron de `user_id` (`/^[a-zA-Z0-9_.]{3,50}$/`).
+- [X] **Auditoria de rutas del Dashboard (`dashboard/index.php` + `assets/js/dashboard.js`)**: sin dependencias de Bootstrap/jQuery (verificado via grep), 100% Tailwind CSS via CDN. Confirmados: favicon institucional (`../assets/img/logo.png`), menu hamburguesa (`#sidebarToggle`/`#sidebarClose`/`#sidebarOverlay`), switch de tema claro/oscuro (`#themeToggle` + `localStorage['mh-theme']`) y las 6 tarjetas de KPIs ejecutivos (`#kpiGrid` <- `api/finance.php?action=kpis`) para el rol `Administrador`.
+
+---
+
 *Este checklist es la fuente de verdad de tareas backend para Media HUB V2. Cada casilla marcada debe corresponder a codigo verificado con `php -l`, pruebas funcionales del endpoint y, cuando aplique, una migracion aditiva documentada en `database/`. No se debe marcar una tarea como completada si introduce una regresion en los modulos vigentes de Fase 1/Fase 2.*
