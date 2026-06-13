@@ -7,25 +7,28 @@
  * - Aplica bloqueo progresivo por intentos fallidos.
  * - Si el usuario tiene reglamentos sin firmar, fuerza redireccion a
  *   legal/firma.php antes de permitir el acceso al Dashboard.
+ *
+ * Ubicacion: api/login.php (un nivel bajo la raiz). Todas las
+ * redirecciones son relativas a esta carpeta.
  */
 
 session_start();
 
-require_once __DIR__ . '/config/Database.php';
-require_once __DIR__ . '/includes/csrf.php';
-require_once __DIR__ . '/includes/security.php';
+require_once __DIR__ . '/../config/Database.php';
+require_once __DIR__ . '/csrf.php';
+require_once __DIR__ . '/security.php';
 
 const MH_MAX_FAILED_ATTEMPTS = 5;
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: /index.php');
+    header('Location: ../index.php');
     exit;
 }
 
 mh_guard_request($_POST, 'login');
 
 if (!csrf_validate($_POST['csrf_token'] ?? null)) {
-    header('Location: /index.php?error=csrf');
+    header('Location: ../index.php?error=csrf');
     exit;
 }
 
@@ -33,7 +36,7 @@ $email    = trim((string) ($_POST['email'] ?? ''));
 $password = (string) ($_POST['password'] ?? '');
 
 if ($email === '' || $password === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    header('Location: /index.php?error=invalid');
+    header('Location: ../index.php?error=invalid');
     exit;
 }
 
@@ -48,7 +51,7 @@ try {
     $user = $stmt->fetch();
 
     if (!$user) {
-        header('Location: /index.php?error=credentials');
+        header('Location: ../index.php?error=credentials');
         exit;
     }
 
@@ -58,12 +61,15 @@ try {
     }
 
     if ($user['status'] === 'Suspendido') {
-        header('Location: /index.php?error=suspended');
+        header('Location: ../index.php?error=suspended');
         exit;
     }
 
     if (!password_verify($password, $user['password_hash'])) {
         $attempts = (int) $user['failed_attempts'] + 1;
+
+        mh_log_security_event('Credenciales invalidas', ['user_id' => $user['user_id']]);
+        mh_troll_escalate();
 
         if ($attempts >= MH_MAX_FAILED_ATTEMPTS) {
             $update = $pdo->prepare(
@@ -80,7 +86,7 @@ try {
         $update = $pdo->prepare('UPDATE users SET failed_attempts = :attempts WHERE id = :id');
         $update->execute(['attempts' => $attempts, 'id' => $user['id']]);
 
-        header('Location: /index.php?error=credentials');
+        header('Location: ../index.php?error=credentials');
         exit;
     }
 
@@ -108,14 +114,18 @@ try {
     $pendingCount = (int) $pending->fetch()['pending'];
 
     if ($pendingCount > 0) {
-        header('Location: /legal/firma.php');
+        header('Location: ../legal/firma.php');
         exit;
     }
 
-    header('Location: /dashboard/index.php');
+    header('Location: ../dashboard/index.php');
     exit;
 } catch (PDOException $e) {
-    error_log('MH-CORE DB error en process_login.php: ' . $e->getMessage());
-    header('Location: /index.php?error=server');
+    error_log('MH-CORE DB error en api/login.php: ' . $e->getMessage());
+    header('Location: ../index.php?error=server');
+    exit;
+} catch (RuntimeException $e) {
+    error_log('MH-CORE config error en api/login.php: ' . $e->getMessage());
+    header('Location: ../index.php?error=server');
     exit;
 }

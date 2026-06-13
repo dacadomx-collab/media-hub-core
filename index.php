@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once __DIR__ . '/includes/csrf.php';
+require_once __DIR__ . '/api/csrf.php';
 
 $csrfToken = csrf_token();
 
@@ -12,6 +12,11 @@ $loginErrors = [
     'server'      => 'Error temporal del servidor. Intenta de nuevo.',
 ];
 $loginError = $loginErrors[$_GET['error'] ?? ''] ?? '';
+
+$loginInfos = [
+    'reset_sent' => 'Si el correo existe en nuestro sistema, recibiras un enlace de recuperacion en breve.',
+];
+$loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="es" class="dark">
@@ -293,7 +298,7 @@ $loginError = $loginErrors[$_GET['error'] ?? ''] ?? '';
             <p>Autentica tu identidad para ingresar al núcleo digital.</p>
           </header>
 
-          <form class="login-form" id="loginForm" method="post" action="process_login.php" novalidate>
+          <form class="login-form" id="loginForm" method="post" action="api/login.php" novalidate>
             <input type="hidden" name="csrf_token" id="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
 
             <label for="email">Correo corporativo</label>
@@ -312,6 +317,48 @@ $loginError = $loginErrors[$_GET['error'] ?? ''] ?? '';
 
             <button type="submit" id="submitBtn">Ingresar al HUB</button>
             <p class="system-message<?php echo $loginError !== '' ? ' error' : ''; ?>" id="systemMessage" aria-live="polite"><?php echo htmlspecialchars($loginError, ENT_QUOTES, 'UTF-8'); ?></p>
+            <?php if ($loginInfo !== ''): ?>
+            <p class="system-message ok"><?php echo htmlspecialchars($loginInfo, ENT_QUOTES, 'UTF-8'); ?></p>
+            <?php endif; ?>
+          </form>
+
+          <button type="button" id="openForgotBtn" style="margin-top: 0.6rem; background: none; border: none; color: var(--text-soft); font-size: 0.82rem; text-decoration: underline; cursor: pointer; text-align: center; width: 100%;">
+            ¿Olvidaste tu contrasena?
+          </button>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: RECUPERAR CONTRASENA ============ -->
+  <div id="forgotModal" class="login-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="forgot-title">
+    <div class="login-modal-center">
+      <div class="relative w-full" style="max-width: 460px;">
+        <button type="button" id="closeForgotBtn" class="login-modal-close" aria-label="Cerrar recuperacion de contrasena">&times;</button>
+
+        <section class="login-shell" role="region" aria-label="Recuperar contrasena Media HUB">
+          <div class="brand-block">
+            <div class="brand-mark" aria-hidden="true">
+              <img src="assets/img/logo.png" alt="Isotipo Media HUB" loading="eager" decoding="async" class="h-16 md:h-20 w-auto object-contain mx-auto md:mx-0">
+            </div>
+            <p class="brand-label">MEDIA HUB</p>
+          </div>
+
+          <header class="panel-header">
+            <h1>Recuperar Acceso</h1>
+            <p>Te enviaremos un enlace para restablecer tu contrasena.</p>
+          </header>
+
+          <form class="login-form" method="post" action="api/forgot_password.php" novalidate>
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+
+            <label for="forgot_email">Correo corporativo</label>
+            <div class="field-wrap">
+              <input type="email" id="forgot_email" name="email" autocomplete="username" inputmode="email" placeholder="usuario@mediahub.com" required>
+              <span class="field-wave" aria-hidden="true"></span>
+            </div>
+
+            <button type="submit">Enviar enlace de recuperacion</button>
           </form>
         </section>
       </div>
@@ -379,9 +426,29 @@ $loginError = $loginErrors[$_GET['error'] ?? ''] ?? '';
       if (event.key === 'Escape' && !loginModal.classList.contains('hidden')) closeLoginModal();
     });
 
-    <?php if ($loginError !== ''): ?>
+    <?php if ($loginError !== '' || $loginInfo !== ''): ?>
     openLoginModal();
     <?php endif; ?>
+
+    // ---- Modal Recuperar Contrasena ----
+    const forgotModal = document.getElementById('forgotModal');
+    const openForgotBtn = document.getElementById('openForgotBtn');
+    const closeForgotBtn = document.getElementById('closeForgotBtn');
+
+    const openForgotModal = () => {
+      closeLoginModal();
+      forgotModal.classList.remove('hidden');
+    };
+    const closeForgotModal = () => forgotModal.classList.add('hidden');
+
+    openForgotBtn.addEventListener('click', openForgotModal);
+    closeForgotBtn.addEventListener('click', closeForgotModal);
+    forgotModal.addEventListener('click', (event) => {
+      if (event.target === forgotModal) closeForgotModal();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !forgotModal.classList.contains('hidden')) closeForgotModal();
+    });
   </script>
 </body>
 </html>

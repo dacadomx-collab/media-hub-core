@@ -91,3 +91,230 @@
         flex-wrap: wrap;
     }
 }
+
+/* ----------------------------------------------------------------------
+   MH-CORE Fase 2: Modulos operativos (Agenda, Clientes, Checklist, Inv.)
+   ---------------------------------------------------------------------- */
+
+.module-section {
+    padding: 1.1rem 1.2rem;
+    border-radius: 16px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--border-soft);
+}
+
+.module-section h2 {
+    margin: 0 0 0.8rem;
+    font-family: "Montserrat", sans-serif;
+    font-size: 1.05rem;
+}
+
+.module-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.8rem;
+    align-items: center;
+}
+
+.mh-table-wrap {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--border-soft);
+}
+
+.mh-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+    min-width: 480px;
+}
+
+.mh-table th,
+.mh-table td {
+    padding: 0.55rem 0.7rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-soft);
+    white-space: nowrap;
+}
+
+.mh-table th {
+    font-family: "Montserrat", sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.04rem;
+    text-transform: uppercase;
+    color: var(--text-soft);
+    background: rgba(2, 26, 49, 0.4);
+}
+
+.mh-table tr:last-child td {
+    border-bottom: none;
+}
+
+.mh-badge {
+    display: inline-block;
+    padding: 0.18rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.03rem;
+    text-transform: uppercase;
+}
+
+.mh-badge.ok { background: rgba(58, 231, 163, 0.18); color: var(--valid); }
+.mh-badge.warn { background: rgba(255, 87, 51, 0.18); color: var(--sunset-orange); }
+.mh-badge.info { background: rgba(0, 191, 178, 0.18); color: var(--pacific-turquoise-light); }
+.mh-badge.muted { background: rgba(169, 220, 232, 0.12); color: var(--text-soft); }
+
+.mh-btn {
+    border: 1px solid var(--border-soft);
+    background: transparent;
+    color: var(--text-main);
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.78rem;
+    font-family: "Montserrat", sans-serif;
+    cursor: pointer;
+    transition: border-color 160ms ease, color 160ms ease;
+}
+
+.mh-btn:hover {
+    border-color: var(--pacific-turquoise-light);
+    color: var(--pacific-turquoise-light);
+}
+
+.mh-btn.primary {
+    background: var(--pacific-turquoise);
+    color: #022f4d;
+    border-color: transparent;
+    font-weight: 700;
+}
+
+.mh-btn.primary:hover {
+    color: #022f4d;
+    filter: brightness(1.08);
+}
+
+.mh-btn.danger {
+    border-color: rgba(255, 87, 51, 0.4);
+    color: var(--sunset-orange);
+}
+
+.mh-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+}
+
+.mh-form label {
+    display: grid;
+    gap: 0.25rem;
+    font-size: 0.78rem;
+    color: var(--text-soft);
+    font-family: "Montserrat", sans-serif;
+}
+
+.mh-form input,
+.mh-form select,
+.mh-form textarea {
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    background: var(--field-bg);
+    color: var(--text-main);
+    padding: 0.5rem 0.65rem;
+    font-size: 0.85rem;
+    font-family: "Roboto", sans-serif;
+}
+
+.mh-form .mh-form-actions {
+    display: flex;
+    align-items: flex-end;
+}
+
+.mh-feedback {
+    min-height: 1.1rem;
+    font-size: 0.8rem;
+    margin: 0.4rem 0 0;
+}
+
+.mh-feedback.error { color: var(--sunset-orange); }
+.mh-feedback.ok { color: var(--valid); }
+
+.checklist-phase h3 {
+    font-family: "Montserrat", sans-serif;
+    font-size: 0.88rem;
+    margin: 0.9rem 0 0.4rem;
+    color: var(--pacific-turquoise-light);
+}
+
+.checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    padding: 0.4rem 0;
+    font-size: 0.85rem;
+    border-bottom: 1px solid rgba(111, 250, 240, 0.12);
+}
+
+.checklist-item:last-child {
+    border-bottom: none;
+}
+
+.checklist-item input[type="checkbox"] {
+    margin-top: 0.2rem;
+    width: 1.05rem;
+    height: 1.05rem;
+    accent-color: var(--pacific-turquoise);
+}
+
+.checklist-item .meta {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-soft);
+    margin-top: 0.15rem;
+}
+
+.mh-hidden {
+    display: none !important;
+}
+
+.theme-toggle-btn {
+    border: 1px solid var(--border-soft);
+    background: transparent;
+    color: var(--text-soft);
+    border-radius: 999px;
+    width: 2.1rem;
+    height: 2.1rem;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: color 160ms ease, border-color 160ms ease;
+}
+
+.theme-toggle-btn:hover {
+    color: var(--pacific-turquoise-light);
+    border-color: var(--pacific-turquoise-light);
+}
+
+/* Modo claro: activado al agregar la clase .light-mode al <html> */
+html.light-mode body {
+    background:
+        radial-gradient(circle at 15% 15%, rgba(0, 191, 178, 0.12), transparent 40%),
+        radial-gradient(circle at 82% 88%, rgba(2, 45, 83, 0.08), transparent 38%),
+        linear-gradient(150deg, #eef7fa, #ffffff 56%, #eaf7f6);
+}
+
+html.light-mode {
+    --panel-bg: rgba(255, 255, 255, 0.78);
+    --text-main: #022D53;
+    --text-soft: #4d7286;
+    --border-soft: rgba(2, 45, 83, 0.14);
+    --field-bg: rgba(255, 255, 255, 0.9);
+}
+
+html.light-mode .mh-table th {
+    background: rgba(2, 45, 83, 0.05);
+}

@@ -4,6 +4,9 @@
  * - Exige sesion activa (login).
  * - Bloquea el acceso si quedan reglamentos sin firmar, redirigiendo
  *   a legal/firma.php (Estandar Oro - Modulo Legal Integrado).
+ *
+ * Uso esperado: incluido desde dashboard/index.php (un nivel bajo la raiz),
+ * por lo que las redirecciones son relativas a esa ubicacion.
  */
 
 require_once __DIR__ . '/../config/Database.php';
@@ -11,7 +14,7 @@ require_once __DIR__ . '/../config/Database.php';
 function mh_require_auth(): array
 {
     if (empty($_SESSION['user_id'])) {
-        header('Location: /index.php');
+        header('Location: ../index.php');
         exit;
     }
 
@@ -23,7 +26,7 @@ function mh_require_auth(): array
     $stmt->execute(['user_id' => $_SESSION['user_id']]);
 
     if ((int) $stmt->fetch()['pending'] > 0) {
-        header('Location: /legal/firma.php');
+        header('Location: ../legal/firma.php');
         exit;
     }
 

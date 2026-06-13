@@ -1,0 +1,11 @@
+# Credenciales y secretos
+.env
+
+# Bitacora de seguridad (Troll Mode)
+seguridad.log
+
+# Scripts de diagnostico / instalacion - SOLO USO LOCAL, NUNCA A PRODUCCION
+genesis.php
+setup_superadmin.php
+db_test.php
+test_hub_connection.php

@@ -50,7 +50,7 @@ users ──┬──< user_legal_signatures >── legal_documents
 | `full_name` | VARCHAR(100) | Nombre completo — usado para validar firma digital |
 | `email` | VARCHAR(150) UNIQUE | Correo corporativo, usado para login |
 | `password_hash` | VARCHAR(255) | Hash Bcrypt (`PASSWORD_BCRYPT`) |
-| `role` | ENUM | `Administrador`, `Lider_Proyecto`, `Staff_Tecnico`, `Chofer_Logistica`, `Cliente` (default `Staff_Tecnico`) |
+| `role` | ENUM | `Administrador`, `Lider_Proyecto`, `Staff_Tecnico`, `Lider_Logistica`, `Cliente` (default `Staff_Tecnico`) |
 | `status` | ENUM | `Activo`, `Suspendido`, `Troll_Mode` (default `Activo`) |
 | `failed_attempts` | INT(1) | Contador de intentos fallidos; >= `MH_MAX_FAILED_ATTEMPTS` (5) → `status = 'Troll_Mode'` |
 | `last_login` | DATETIME | Ultimo login exitoso |
@@ -64,7 +64,14 @@ users ──┬──< user_legal_signatures >── legal_documents
 | `lider.glage` | German Lage | `Lider_Proyecto` |
 | `staff.gmorales` | Gibran Morales | `Staff_Tecnico` |
 | `staff.amurillo` | Antonio Murillo | `Staff_Tecnico` |
-| `chofer.logistica1` | Chofer Logistica 1 | `Chofer_Logistica` |
+| `chofer.logistica1` | Chofer Logistica 1 | `Chofer_Logistica` (legacy, renombrado a `Lider_Logistica` en Fase 4) |
+
+**Altas oficiales (Fase 4, `migration_fase4_roles_seed.sql`, password temporal `MediaHub2026!`):**
+
+| `user_id` | `full_name` | `email` | `role` | `status` | Firmas legales |
+|---|---|---|---|---|---|
+| `admin.glage` | German Lage | `leolageacadep@gmail.com` | `Administrador` | `Activo` | Precargadas `signed = 1` (acceso directo, sin bloqueo) |
+| `logistica.gmorales` | Gibran Morales | `gibranmorales700@gmail.com` | `Lider_Logistica` | `Activo` | Pendientes `signed = 0` (debe firmar en su primer login) |
 
 ---
 

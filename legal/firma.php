@@ -3,71 +3,29 @@
  * MH-CORE: Firma Digital Obligatoria de Reglamentos.
  * Bloquea por completo el Dashboard hasta que el usuario lea y acepte
  * los 4 reglamentos inmutables (banderas en `user_legal_signatures`).
+ *
+ * El procesamiento del POST vive en api/signature.php; esta pagina solo
+ * renderiza el formulario y muestra el error devuelto (si lo hay).
  */
 
 session_start();
 
 require_once __DIR__ . '/../config/Database.php';
-require_once __DIR__ . '/../includes/csrf.php';
-require_once __DIR__ . '/../includes/security.php';
+require_once __DIR__ . '/../api/csrf.php';
 
 if (empty($_SESSION['user_id'])) {
-    header('Location: /index.php');
+    header('Location: ../index.php');
     exit;
 }
 
 $pdo = Database::getInstance()->getConnection();
 $userId = (int) $_SESSION['user_id'];
-$errorMessage = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    mh_guard_request($_POST, 'legal_firma');
-
-    if (!csrf_validate($_POST['csrf_token'] ?? null)) {
-        header('Location: /index.php?error=csrf');
-        exit;
-    }
-
-    $stmt = $pdo->prepare(
-        'SELECT d.id, d.code, d.title
-         FROM legal_documents d
-         JOIN user_legal_signatures s ON s.document_id = d.id
-         WHERE s.user_id = :user_id AND s.signed = 0'
-    );
-    $stmt->execute(['user_id' => $userId]);
-    $pendingDocs = $stmt->fetchAll();
-
-    $ack = $_POST['ack'] ?? [];
-    $signatureName = trim((string) ($_POST['signature_name'] ?? ''));
-
-    $allAccepted = true;
-    foreach ($pendingDocs as $doc) {
-        if (empty($ack[$doc['id']])) {
-            $allAccepted = false;
-            break;
-        }
-    }
-
-    $signatureMatches = $signatureName !== ''
-        && mb_strtolower($signatureName) === mb_strtolower((string) $_SESSION['full_name']);
-
-    if (!$allAccepted || !$signatureMatches) {
-        $errorMessage = 'Debes marcar todos los reglamentos y escribir tu nombre completo exactamente como aparece en tu cuenta.';
-    } else {
-        $update = $pdo->prepare(
-            'UPDATE user_legal_signatures
-             SET signed = 1, signed_at = NOW(), ip_address = :ip
-             WHERE user_id = :user_id AND signed = 0'
-        );
-        $update->execute([
-            'ip'      => $_SERVER['REMOTE_ADDR'] ?? null,
-            'user_id' => $userId,
-        ]);
-
-        header('Location: /dashboard/index.php');
-        exit;
-    }
-}
+$errorMessages = [
+    'mismatch' => 'Debes marcar todos los reglamentos y escribir tu nombre completo exactamente como aparece en tu cuenta.',
+    'csrf'     => 'Tu sesion expiro. Vuelve a iniciar sesion para continuar.',
+];
+$errorMessage = $errorMessages[$_GET['error'] ?? ''] ?? '';
 
 $stmt = $pdo->prepare(
     'SELECT d.id, d.code, d.title, d.content, d.version, s.signed
@@ -82,7 +40,7 @@ $documents = $stmt->fetchAll();
 $pendingDocuments = array_filter($documents, static fn ($doc) => (int) $doc['signed'] === 0);
 
 if (count($pendingDocuments) === 0) {
-    header('Location: /dashboard/index.php');
+    header('Location: ../dashboard/index.php');
     exit;
 }
 
@@ -120,7 +78,7 @@ $csrfToken = csrf_token();
                 <p class="system-message error"><?php echo htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8'); ?></p>
             <?php endif; ?>
 
-            <form class="legal-form" method="post" action="firma.php" novalidate>
+            <form class="legal-form" method="post" action="../api/signature.php" novalidate>
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
 
                 <div class="legal-doc-list">

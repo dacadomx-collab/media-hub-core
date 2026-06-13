@@ -22,3 +22,9 @@ jobs:
           **/.git*
           **/.github*
           .env
+          seguridad.log
+          genesis.php
+          setup_superadmin.php
+          db_test.php
+          test_hub_connection.php
+          knowledge/**

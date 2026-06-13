@@ -17,10 +17,26 @@ class Database
             throw new RuntimeException('Archivo .env no encontrado en la raiz del proyecto.');
         }
 
-        $env = parse_ini_file($envFile);
+        $previousHandler = set_error_handler(function (): bool {
+            return true; // Silencia el warning nativo; el fallo se evalua via el valor de retorno.
+        });
+
+        try {
+            $env = parse_ini_file($envFile, false, INI_SCANNER_RAW);
+        } finally {
+            restore_error_handler();
+        }
 
         if ($env === false) {
-            throw new RuntimeException('El archivo .env tiene un error de sintaxis.');
+            throw new RuntimeException('Configuracion de entorno invalida.');
+        }
+
+        $required = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS'];
+
+        foreach ($required as $key) {
+            if (!array_key_exists($key, $env) || $env[$key] === '') {
+                throw new RuntimeException('Configuracion de entorno incompleta.');
+            }
         }
 
         $host    = $env['DB_HOST'];
