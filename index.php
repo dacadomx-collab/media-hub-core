@@ -5,16 +5,16 @@ require_once __DIR__ . '/api/csrf.php';
 $csrfToken = csrf_token();
 
 $loginErrors = [
-    'csrf'        => 'Tu sesion expiro. Intenta nuevamente.',
+    'csrf'        => 'Tu sesión ha expirado. Intenta nuevamente.',
     'invalid'     => 'Revisa el formato de tu correo y clave.',
     'credentials' => 'Correo o clave incorrectos.',
-    'suspended'   => 'Esta cuenta esta suspendida. Contacta al Administrador.',
+    'suspended'   => 'Esta cuenta está suspendida. Contacta al Administrador.',
     'server'      => 'Error temporal del servidor. Intenta de nuevo.',
 ];
 $loginError = $loginErrors[$_GET['error'] ?? ''] ?? '';
 
 $loginInfos = [
-    'reset_sent' => 'Si el correo existe en nuestro sistema, recibiras un enlace de recuperacion en breve.',
+    'reset_sent' => 'Si el correo existe en nuestro sistema, recibirás un enlace de recuperación en breve.',
 ];
 $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
 ?>
@@ -24,7 +24,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Media HUB | Estudio 5 de Mayo - La Paz, BCS</title>
-<meta name="description" content="Media HUB: terminal inteligente de produccion audiovisual en La Paz, BCS. Estudio 5 de Mayo, unidades moviles y transmision Simulcast en vivo.">
+<meta name="description" content="Media HUB: terminal inteligente de producción audiovisual en La Paz, BCS. Estudio 5 de Mayo, unidades móviles y transmisión Simulcast en vivo.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
@@ -101,7 +101,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
           <span class="sm:hidden">Ingresar</span>
         </button>
 
-        <button id="navToggle" type="button" aria-label="Abrir menu" aria-expanded="false" class="md:hidden grid place-items-center w-9 h-9 rounded-full border border-turquoise/40 hover:border-turquoise transition-colors">
+        <button id="navToggle" type="button" aria-label="Abrir menú" aria-expanded="false" class="md:hidden grid place-items-center w-9 h-9 rounded-full border border-turquoise/40 hover:border-turquoise transition-colors">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"/></svg>
         </button>
       </div>
@@ -131,11 +131,11 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
         La Paz, Baja California Sur
       </span>
       <h1 class="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl leading-tight mb-5">
-        Tu produccion, <span class="text-turquoise">sin caos.</span><br class="hidden sm:block">
+        Tu producción, <span class="text-turquoise">sin caos.</span><br class="hidden sm:block">
         El centro de mando audiovisual de BCS.
       </h1>
       <p class="max-w-2xl mx-auto text-base sm:text-lg text-deep-sea/70 dark:text-digital-white/70 mb-8">
-        Media HUB coordina tu estudio, tu staff y tus unidades moviles &mdash;terrestres y maritimas&mdash; desde una sola plataforma. Agenda inteligente, inventario en tiempo real y transmision en vivo lista para tu marca.
+        Media HUB coordina tu estudio, tu staff y tus unidades móviles &mdash;terrestres y marítimas&mdash; desde una sola plataforma. Agenda inteligente, inventario en tiempo real y transmisión en vivo lista para tu marca.
       </p>
       <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
         <a href="#contacto" class="w-full sm:w-auto inline-flex justify-center items-center px-7 py-3.5 rounded-full bg-turquoise text-deep-sea font-display font-bold shadow-lg shadow-turquoise/30 hover:brightness-110 transition">
@@ -155,7 +155,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
         <span class="text-turquoise font-display font-bold text-sm uppercase tracking-widest">Infraestructura</span>
         <h2 class="font-display font-extrabold text-3xl sm:text-4xl mt-2 mb-4">Estudio 5 de Mayo</h2>
         <p class="text-deep-sea/70 dark:text-digital-white/70">
-          Equipamiento profesional listo para entrevistas, paneles y produccion multicamara, respaldado por una flota movil para cobertura en cualquier punto de BCS.
+          Equipamiento profesional listo para entrevistas, paneles y producción multicamara, respaldado por una flota móvil para cobertura en cualquier punto de BCS.
         </p>
       </div>
 
@@ -163,29 +163,29 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
         <div class="rounded-2xl p-6 bg-white dark:bg-deep-sea/60 border border-turquoise/15 shadow-sm">
           <div class="w-11 h-11 rounded-xl bg-turquoise/10 grid place-items-center mb-4 text-turquoise text-xl">📹</div>
           <h3 class="font-display font-bold text-lg mb-2">Multicamara HD</h3>
-          <p class="text-sm text-deep-sea/60 dark:text-digital-white/60">Camaras y opticas profesionales para set principal y secundario.</p>
+          <p class="text-sm text-deep-sea/60 dark:text-digital-white/60">Cámaras y ópticas profesionales para set principal y secundario.</p>
         </div>
         <div class="rounded-2xl p-6 bg-white dark:bg-deep-sea/60 border border-turquoise/15 shadow-sm">
           <div class="w-11 h-11 rounded-xl bg-turquoise/10 grid place-items-center mb-4 text-turquoise text-xl">💡</div>
-          <h3 class="font-display font-bold text-lg mb-2">Iluminacion LED Fria</h3>
-          <p class="text-sm text-deep-sea/60 dark:text-digital-white/60">Paneles LED de bajo consumo termico para sesiones prolongadas.</p>
+          <h3 class="font-display font-bold text-lg mb-2">Iluminación LED Fria</h3>
+          <p class="text-sm text-deep-sea/60 dark:text-digital-white/60">Paneles LED de bajo consumo térmico para sesiones prolongadas.</p>
         </div>
         <div class="rounded-2xl p-6 bg-white dark:bg-deep-sea/60 border border-turquoise/15 shadow-sm">
           <div class="w-11 h-11 rounded-xl bg-turquoise/10 grid place-items-center mb-4 text-turquoise text-xl">🚐</div>
-          <h3 class="font-display font-bold text-lg mb-2">Van de Produccion</h3>
+          <h3 class="font-display font-bold text-lg mb-2">Van de Producción</h3>
           <p class="text-sm text-deep-sea/60 dark:text-digital-white/60">Unidad terrestre para cobertura externa en toda La Paz y alrededores.</p>
         </div>
         <div class="rounded-2xl p-6 bg-white dark:bg-deep-sea/60 border border-turquoise/15 shadow-sm">
           <div class="w-11 h-11 rounded-xl bg-turquoise/10 grid place-items-center mb-4 text-turquoise text-xl">⛵</div>
-          <h3 class="font-display font-bold text-lg mb-2">Embarcacion Maritima</h3>
-          <p class="text-sm text-deep-sea/60 dark:text-digital-white/60">Cobertura unica en el Mar de Cortes para producciones especiales.</p>
+          <h3 class="font-display font-bold text-lg mb-2">Embarcación Marítima</h3>
+          <p class="text-sm text-deep-sea/60 dark:text-digital-white/60">Cobertura única en el Mar de Cortes para producciones especiales.</p>
         </div>
       </div>
 
-      <!-- Galeria del set: arsenal tecnologico (mobile-first, 1 col -> 2 col en md+) -->
+      <!-- Galería del set: arsenal tecnológico (mobile-first, 1 col -> 2 col en md+) -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-8">
         <div class="rounded-2xl overflow-hidden border border-turquoise/15 shadow-sm aspect-video">
-          <img src="assets/img/estudio-5-de-mayo.jpg" alt="Set principal del Estudio 5 de Mayo con iluminacion LED, multicamara y panel de entrevistas" class="w-full h-full object-cover" loading="lazy" width="1600" height="900">
+          <img src="assets/img/estudio-5-de-mayo.jpg" alt="Set principal del Estudio 5 de Mayo con iluminación LED, multicámara y panel de entrevistas" class="w-full h-full object-cover" loading="lazy" width="1600" height="900">
         </div>
         <div class="rounded-2xl overflow-hidden border border-turquoise/15 shadow-sm aspect-video">
           <img src="assets/img/estudio-5-de-mayo-2.jpg" alt="Vista panoramica del croma verde y la mesa de panel del Estudio 5 de Mayo" class="w-full h-full object-cover" loading="lazy" width="1600" height="900">
@@ -203,16 +203,16 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
           Simulcast: tu programa en Facebook y YouTube, al mismo tiempo.
         </h2>
         <p class="text-deep-sea/70 dark:text-digital-white/70 mb-6">
-          Nuestra infraestructura tecnologica transmite tu produccion en vivo de forma simultanea hacia Facebook y YouTube, ampliando tu audiencia sin duplicar esfuerzos ni equipo. Ideal para programas recurrentes, entrevistas y eventos institucionales.
+          Nuestra infraestructura tecnológica transmite tu producción en vivo de forma simultánea hacia Facebook y YouTube, ampliando tu audiencia sin duplicar esfuerzos ni equipo. Ideal para programas recurrentes, entrevistas y eventos institucionales.
         </p>
         <ul class="space-y-3 text-sm sm:text-base">
           <li class="flex items-start gap-3">
             <span class="mt-0.5 text-turquoise">✔</span>
-            <span>Transmision simultanea a multiples plataformas sin perdida de calidad.</span>
+            <span>Transmisión simultánea a múltiples plataformas sin pérdida de calidad.</span>
           </li>
           <li class="flex items-start gap-3">
             <span class="mt-0.5 text-turquoise">✔</span>
-            <span>Switching multicamara en vivo desde el Estudio 5 de Mayo.</span>
+            <span>Switching multicámara en vivo desde el Estudio 5 de Mayo.</span>
           </li>
           <li class="flex items-start gap-3">
             <span class="mt-0.5 text-turquoise">✔</span>
@@ -248,10 +248,10 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
   <section id="clientes" class="py-16 sm:py-24 bg-[#f4fbfb] dark:bg-[#031f3c]">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center max-w-2xl mx-auto mb-12">
-        <span class="text-turquoise font-display font-bold text-sm uppercase tracking-widest">Casos de Exito</span>
+        <span class="text-turquoise font-display font-bold text-sm uppercase tracking-widest">Casos de Éxito</span>
         <h2 class="font-display font-extrabold text-3xl sm:text-4xl mt-2 mb-4">Clientes Jornal activos</h2>
         <p class="text-deep-sea/70 dark:text-digital-white/70">
-          Programas recurrentes que crecen gracias a la coordinacion y produccion continua de Media HUB.
+          Programas recurrentes que crecen gracias a la coordinación y producción continua de Media HUB.
         </p>
       </div>
 
@@ -261,11 +261,11 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
             <div class="w-12 h-12 rounded-full bg-turquoise/15 grid place-items-center text-turquoise font-display font-bold text-lg">MS</div>
             <div>
               <h3 class="font-display font-bold">Medicina del Siglo XXI</h3>
-              <p class="text-xs text-deep-sea/50 dark:text-digital-white/50">Dr. Efrain Torres</p>
+              <p class="text-xs text-deep-sea/50 dark:text-digital-white/50">Dr. Efraín Torres</p>
             </div>
           </div>
           <p class="text-sm text-deep-sea/70 dark:text-digital-white/70 mb-4">
-            "Gracias a la coordinacion de Media HUB, cada entrevista con especialistas se produce sin contratiempos: agenda confirmada, equipo listo y transmision impecable cada semana."
+            "Gracias a la coordinación de Media HUB, cada entrevista con especialistas se produce sin contratiempos: agenda confirmada, equipo listo y transmisión impecable cada semana."
           </p>
           <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-turquoise/10 text-turquoise">Entrevistas a especialistas</span>
         </article>
@@ -275,11 +275,11 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
             <div class="w-12 h-12 rounded-full bg-turquoise/15 grid place-items-center text-turquoise font-display font-bold text-lg">CC</div>
             <div>
               <h3 class="font-display font-bold">CCBCS</h3>
-              <p class="text-xs text-deep-sea/50 dark:text-digital-white/50">Efrain Torres</p>
+              <p class="text-xs text-deep-sea/50 dark:text-digital-white/50">Efraín Torres</p>
             </div>
           </div>
           <p class="text-sm text-deep-sea/70 dark:text-digital-white/70 mb-4">
-            "Nuestro programa institucional mantiene una presencia constante en redes gracias al Simulcast de Media HUB hacia Facebook y YouTube, con produccion profesional en cada emision."
+            "Nuestro programa institucional mantiene una presencia constante en redes gracias al Simulcast de Media HUB hacia Facebook y YouTube, con producción profesional en cada emisión."
           </p>
           <span class="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-turquoise/10 text-turquoise">Programa institucional recurrente</span>
         </article>
@@ -290,9 +290,9 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
   <!-- ============ CONTACTO / CTA FINAL ============ -->
   <section id="contacto" class="py-16 sm:py-24">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-      <h2 class="font-display font-extrabold text-3xl sm:text-4xl mb-4">Lleva tu produccion a Media HUB</h2>
+      <h2 class="font-display font-extrabold text-3xl sm:text-4xl mb-4">Lleva tu producción a Media HUB</h2>
       <p class="text-deep-sea/70 dark:text-digital-white/70 mb-8 max-w-xl mx-auto">
-        Josefa Ortiz de Dominguez &amp; Calle 5 de Mayo, Zona Central, 23000 La Paz, B.C.S. &mdash; WhatsApp (612) 123-4567
+        Josefa Ortiz de Domínguez &amp; Calle 5 de Mayo, Zona Central, 23000 La Paz, B.C.S. &mdash; WhatsApp (612) 123-4567
       </p>
       <a href="https://wa.me/526121234567" target="_blank" rel="noopener" class="inline-flex items-center px-8 py-3.5 rounded-full bg-turquoise text-deep-sea font-display font-bold shadow-lg shadow-turquoise/30 hover:brightness-110 transition">
         Escribenos por WhatsApp
@@ -391,7 +391,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
               <span class="field-wave" aria-hidden="true"></span>
             </div>
 
-            <button type="submit">Enviar enlace de recuperacion</button>
+            <button type="submit">Enviar enlace de recuperación</button>
           </form>
         </section>
       </div>
