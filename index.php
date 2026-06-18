@@ -86,7 +86,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
       <nav class="hidden md:flex items-center gap-6 text-sm font-medium">
         <a href="#estudio" class="hover:text-turquoise transition-colors">Estudio</a>
         <a href="#simulcast" class="hover:text-turquoise transition-colors">Simulcast</a>
-        <a href="#clientes" class="hover:text-turquoise transition-colors">Clientes Jornal</a>
+        <a href="#clientes" class="hover:text-turquoise transition-colors">Clientes</a>
         <a href="#contacto" class="hover:text-turquoise transition-colors">Contacto</a>
       </nav>
 
@@ -112,7 +112,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
       <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-col gap-3 text-sm font-medium">
         <a href="#estudio" class="hover:text-turquoise transition-colors">Estudio</a>
         <a href="#simulcast" class="hover:text-turquoise transition-colors">Simulcast</a>
-        <a href="#clientes" class="hover:text-turquoise transition-colors">Clientes Jornal</a>
+        <a href="#clientes" class="hover:text-turquoise transition-colors">Clientes</a>
         <a href="#contacto" class="hover:text-turquoise transition-colors">Contacto</a>
       </div>
     </nav>
@@ -244,12 +244,12 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
     </div>
   </section>
 
-  <!-- ============ CLIENTES JORNAL / TESTIMONIALES ============ -->
+  <!-- ============ CLIENTES / TESTIMONIALES ============ -->
   <section id="clientes" class="py-16 sm:py-24 bg-[#f4fbfb] dark:bg-[#031f3c]">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center max-w-2xl mx-auto mb-12">
         <span class="text-turquoise font-display font-bold text-sm uppercase tracking-widest">Casos de Éxito</span>
-        <h2 class="font-display font-extrabold text-3xl sm:text-4xl mt-2 mb-4">Clientes Jornal activos</h2>
+        <h2 class="font-display font-extrabold text-3xl sm:text-4xl mt-2 mb-4">Clientes activos</h2>
         <p class="text-deep-sea/70 dark:text-digital-white/70">
           Programas recurrentes que crecen gracias a la coordinación y producción continua de Media HUB.
         </p>
