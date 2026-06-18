@@ -295,7 +295,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
         Josefa Ortiz de Domínguez &amp; Calle 5 de Mayo, Zona Central, 23000 La Paz, B.C.S. &mdash; WhatsApp (612) 123-4567
       </p>
       <a href="https://wa.me/526121234567" target="_blank" rel="noopener" class="inline-flex items-center px-8 py-3.5 rounded-full bg-turquoise text-deep-sea font-display font-bold shadow-lg shadow-turquoise/30 hover:brightness-110 transition">
-        Escribenos por WhatsApp
+        Escríbenos por WhatsApp
       </a>
     </div>
   </section>
