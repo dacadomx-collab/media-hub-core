@@ -178,7 +178,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
         <div class="rounded-2xl p-6 bg-white dark:bg-deep-sea/60 border border-turquoise/15 shadow-sm">
           <div class="w-11 h-11 rounded-xl bg-turquoise/10 grid place-items-center mb-4 text-turquoise text-xl">⛵</div>
           <h3 class="font-display font-bold text-lg mb-2">Embarcación Marítima</h3>
-          <p class="text-sm text-deep-sea/60 dark:text-digital-white/60">Cobertura única en el Mar de Cortes para producciones especiales.</p>
+          <p class="text-sm text-deep-sea/60 dark:text-digital-white/60">Cobertura única en el Mar de Cortés para producciones especiales.</p>
         </div>
       </div>
 
