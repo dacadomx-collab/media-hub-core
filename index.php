@@ -79,7 +79,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
   <header class="sticky top-0 z-50 backdrop-blur-md bg-white/80 dark:bg-deep-sea/80 border-b border-turquoise/20">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
       <a href="#inicio" class="flex items-center gap-2 font-display font-extrabold text-lg tracking-wide">
-        <img src="assets/img/logo.png" alt="Media HUB Logo" class="h-16 md:h-20 w-auto object-contain mx-auto md:mx-0">
+        <img src="assets/img/ChatGPT_Image_18_jun_2026__12_54_11_p.m.-removebg-preview.png" alt="Media HUB Logo" class="h-16 md:h-20 w-auto object-contain mx-auto md:mx-0">
         <span>MEDIA <span class="text-turquoise">HUB</span></span>
       </a>
 
@@ -321,7 +321,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
         <section class="login-shell" role="region" aria-label="Panel de acceso Media HUB">
           <div class="brand-block">
             <div class="brand-mark" aria-hidden="true">
-              <img src="assets/img/logo.png" alt="Isotipo Media HUB" loading="eager" decoding="async" class="h-16 md:h-20 w-auto object-contain mx-auto md:mx-0">
+              <img src="assets/img/ChatGPT_Image_18_jun_2026__12_54_11_p.m.-removebg-preview.png" alt="Isotipo Media HUB" loading="eager" decoding="async" class="h-16 md:h-20 w-auto object-contain mx-auto md:mx-0">
             </div>
             <p class="brand-label">MEDIA HUB</p>
           </div>
@@ -372,7 +372,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
         <section class="login-shell" role="region" aria-label="Recuperar contrasena Media HUB">
           <div class="brand-block">
             <div class="brand-mark" aria-hidden="true">
-              <img src="assets/img/logo.png" alt="Isotipo Media HUB" loading="eager" decoding="async" class="h-16 md:h-20 w-auto object-contain mx-auto md:mx-0">
+              <img src="assets/img/ChatGPT_Image_18_jun_2026__12_54_11_p.m.-removebg-preview.png" alt="Isotipo Media HUB" loading="eager" decoding="async" class="h-16 md:h-20 w-auto object-contain mx-auto md:mx-0">
             </div>
             <p class="brand-label">MEDIA HUB</p>
           </div>
