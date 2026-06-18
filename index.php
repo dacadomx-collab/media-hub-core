@@ -155,19 +155,19 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
         <span class="text-turquoise font-display font-bold text-sm uppercase tracking-widest">Infraestructura</span>
         <h2 class="font-display font-extrabold text-3xl sm:text-4xl mt-2 mb-4">Estudio 5 de Mayo</h2>
         <p class="text-deep-sea/70 dark:text-digital-white/70">
-          Equipamiento profesional listo para entrevistas, paneles y producción multicamara, respaldado por una flota móvil para cobertura en cualquier punto de BCS.
+          Equipamiento profesional listo para entrevistas, paneles y producción multicámara, respaldado por una flota móvil para cobertura en cualquier punto de BCS.
         </p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div class="rounded-2xl p-6 bg-white dark:bg-deep-sea/60 border border-turquoise/15 shadow-sm">
           <div class="w-11 h-11 rounded-xl bg-turquoise/10 grid place-items-center mb-4 text-turquoise text-xl">📹</div>
-          <h3 class="font-display font-bold text-lg mb-2">Multicamara HD</h3>
+          <h3 class="font-display font-bold text-lg mb-2">Multicámara HD</h3>
           <p class="text-sm text-deep-sea/60 dark:text-digital-white/60">Cámaras y ópticas profesionales para set principal y secundario.</p>
         </div>
         <div class="rounded-2xl p-6 bg-white dark:bg-deep-sea/60 border border-turquoise/15 shadow-sm">
           <div class="w-11 h-11 rounded-xl bg-turquoise/10 grid place-items-center mb-4 text-turquoise text-xl">💡</div>
-          <h3 class="font-display font-bold text-lg mb-2">Iluminación LED Fria</h3>
+          <h3 class="font-display font-bold text-lg mb-2">Iluminación LED Fría</h3>
           <p class="text-sm text-deep-sea/60 dark:text-digital-white/60">Paneles LED de bajo consumo térmico para sesiones prolongadas.</p>
         </div>
         <div class="rounded-2xl p-6 bg-white dark:bg-deep-sea/60 border border-turquoise/15 shadow-sm">
