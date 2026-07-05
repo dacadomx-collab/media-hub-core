@@ -24,9 +24,14 @@ jobs:
           .github/**
           **/.github/**
           .env
+          seguridad.log
+          mail.log
           **/database/**
           **/knowledge/**
           **/api/test_integration.php
+          **/api/debug_db.php
+          **/api/test_smtp_delivery.php
           **/genesis.php
           **/db_test.php
           **/setup_superadmin.php
+          **/test_hub_connection.php

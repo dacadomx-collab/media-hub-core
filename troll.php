@@ -12,6 +12,7 @@ http_response_code(403);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Media HUB | Acceso Restringido</title>
+    <link rel="icon" type="image/png" href="assets/img/logo.png">
     <link rel="preload" href="assets/css/main.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="assets/css/main.css"></noscript>
 </head>

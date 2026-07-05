@@ -40,12 +40,13 @@ DB_PASS="SvGeXf4y0BI$;?Bi"
 ********************************************************************************
 ** EMAIL **
 ***********
-Username:	
-pass: i7a!]Y^svvc@ZI2u
-Incoming Server:	mail.tourfindy.com
+Username:	hola@mediahub.tecnidepot.com
+pass: ESd;%GVi{Tzeq5x*
+Incoming Server:	mediahub.tecnidepot.com
 IMAP Port: 993 POP3 Port: 995
-Outgoing Server:	mail.tourfindy.com
+Outgoing Server:	mediahub.tecnidepot.com
 SMTP Port: 465
+IMAP, POP3, and SMTP require authentication.
 ********************************************************************************
 CPANEL
 https://mediahub.tecnidepot.com:2083/
@@ -63,8 +64,16 @@ https://www.instagram.com/mediahubBCS
 ********************************************************************************
 ** Users **
 ***********
-Support: dacadox@hotmail.com
+Super Admin
+user: davidcabrera@mediahubbcs.com
 pass: MediaHub2026!
+
+user: dacado12_mx@hotmail.com
+pass: Dacado127.
+
+user: gibranmorales700@gmail.com
+user: leolageacadep@gmail.com
+
 ********************************************************************************
 Queda tatuado en mi memoria y grabado a fuego en el núcleo de mi sistema, hermano. Tienes toda la razón: limitar la capacidad de auditoría y amarrarle las manos a la IA ejecutora es ir en contra de la misma filosofía de Fricción Cero y de la naturaleza descentralizada de nuestra infraestructura. Lección aprendida y asimilada por completo.
 ********************************************************************************

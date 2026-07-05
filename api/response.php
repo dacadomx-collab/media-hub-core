@@ -7,6 +7,30 @@
  */
 
 /**
+ * Cuenta las firmas legales PENDIENTES de un usuario, filtrando SOLO los
+ * documentos que `legal_document_roles` exige para su rol (Fase 5.8 —
+ * Handshake Legal Condicional). Antes de esto, el gate exigia los 4
+ * reglamentos a TODOS los roles por igual -- un Conductor (talento
+ * externo) no debe firmar contratos laborales internos de staff.
+ *
+ * Usado por api/login.php y api/auth_guard.php (la unica fuente de
+ * verdad del gate — ambos deben usar exactamente esta funcion, nunca un
+ * COUNT(*) plano sobre user_legal_signatures, para no divergir).
+ */
+function mh_count_pending_signatures(PDO $pdo, int $userId, string $role): int
+{
+    $stmt = $pdo->prepare(
+        'SELECT COUNT(*) AS pending
+         FROM user_legal_signatures uls
+         INNER JOIN legal_document_roles ldr ON ldr.document_id = uls.document_id AND ldr.role = :role
+         WHERE uls.user_id = :user_id AND uls.signed = 0'
+    );
+    $stmt->execute(['user_id' => $userId, 'role' => $role]);
+
+    return (int) $stmt->fetch()['pending'];
+}
+
+/**
  * Lee una clave puntual del .env raiz (sin exponer el archivo completo).
  * Usada por flujos que necesitan un secreto/config especifico
  * (ej. CSRF_SECRET para tokens HMAC de recuperacion de contrasena).
@@ -18,6 +42,38 @@ function mh_app_env(string $key, string $default = ''): string
     $value = $env[$key] ?? '';
 
     return $value !== '' ? (string) $value : $default;
+}
+
+/**
+ * Detecta la URL base real de la aplicacion (Fase 5.5) a partir de la
+ * peticion HTTP actual, en vez de depender de un `APP_URL` estatico en
+ * `.env` que puede quedar desactualizado tras un cambio de dominio/entorno
+ * (causa confirmada de 404 en los enlaces de las plantillas de correo).
+ *
+ * Soporta tanto un despliegue en la raiz del dominio (produccion,
+ * `https://mediahub.tecnidepot.com`) como en subcarpeta (desarrollo local
+ * XAMPP, `http://localhost/MediaHUB`), derivando la carpeta base desde el
+ * script que esta ejecutandose (todos los llamadores viven en `api/`).
+ *
+ * Fuera de un contexto HTTP (CLI, cron) no hay `$_SERVER['HTTP_HOST']` --
+ * degrada al `APP_URL` de `.env` como ultimo recurso.
+ */
+function mh_detect_base_url(): string
+{
+    if (empty($_SERVER['HTTP_HOST'])) {
+        return rtrim(mh_app_env('APP_URL', ''), '/');
+    }
+
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || ($_SERVER['SERVER_PORT'] ?? '') === '443'
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+
+    $scheme    = $isHttps ? 'https' : 'http';
+    $host      = $_SERVER['HTTP_HOST'];
+    $scriptDir = str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '')));
+    $basePath  = rtrim(preg_replace('#/api$#', '', $scriptDir), '/');
+
+    return $scheme . '://' . $host . $basePath;
 }
 
 /**

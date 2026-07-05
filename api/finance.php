@@ -33,7 +33,7 @@ try {
     // GET ?action=kpis — Tarjetas del Centro de Comando Ejecutivo
     // -----------------------------------------------------------------
     if ($method === 'GET' && $action === 'kpis') {
-        mh_require_role($currentUser, ['Administrador']);
+        mh_require_role($currentUser, ['Super_admin', 'Admin']);
 
         $monthStart = date('Y-m-01');
         $monthEnd   = date('Y-m-t');

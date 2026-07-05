@@ -15,25 +15,33 @@ $user      = mh_require_auth();
 $csrfToken = csrf_token();
 
 $roleLabels = [
-    'Administrador'    => 'Administrador',
+    'Super_admin'      => 'Super Admin',
+    'Admin'            => 'Administrador',
     'Lider_Proyecto'   => 'Lider de Proyecto',
     'Staff_Tecnico'    => 'Staff Tecnico',
     'Lider_Logistica'  => 'Lider de Logistica',
     'Cliente'          => 'Cliente',
+    'Team'             => 'Equipo Interno',
+    'Conductor'        => 'Conductor',
 ];
 
 $roleDescriptions = [
-    'Administrador'    => 'Control total del sistema: usuarios, agenda, inventario y modulo legal.',
+    'Super_admin'      => 'Control absoluto del sistema: unico rol facultado para crear cuentas Super_admin/Admin.',
+    'Admin'            => 'Control operativo del sistema: usuarios, agenda, inventario y modulo legal.',
     'Lider_Proyecto'   => 'Supervision de programas, agenda del Estudio 5 de Mayo y asignacion de staff por llamado.',
     'Staff_Tecnico'    => 'Tareas tecnicas asignadas por llamado y check-in/check-out de equipo.',
     'Lider_Logistica'  => 'Operacion y check-in/check-out de unidades moviles (Van Terrestre / Embarcacion Maritima).',
     'Cliente'          => 'Seguimiento de tu programa y agenda de llamados en Media HUB.',
+    'Team'             => 'Soporte, administracion general y ventas de Media HUB.',
+    'Conductor'        => 'Conduccion de tu show nativo y generacion de enlaces de invitado.',
 ];
 
 $roleLabel       = $roleLabels[$user['role']] ?? $user['role'];
 $roleDescription = $roleDescriptions[$user['role']] ?? '';
-$isManager       = in_array($user['role'], ['Administrador', 'Lider_Proyecto'], true);
-$isAdmin         = $user['role'] === 'Administrador';
+$isManager       = in_array($user['role'], ['Super_admin', 'Admin', 'Lider_Proyecto'], true);
+$isAdmin         = in_array($user['role'], ['Super_admin', 'Admin'], true);
+$isSuperAdmin    = $user['role'] === 'Super_admin';
+$isConductor     = $user['role'] === 'Conductor';
 ?>
 <!DOCTYPE html>
 <html lang="es" class="dark">
@@ -175,6 +183,19 @@ $isAdmin         = $user['role'] === 'Administrador';
         <a href="#inicio" class="nav-link active flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-turquoise/10">
           <span class="text-base">&#127968;</span> Inicio
         </a>
+
+        <?php if ($isConductor): ?>
+        <!-- ============ MENU SIMPLIFICADO DEL CONDUCTOR (Fase 5.9 — Ligereza Maritima) ============ -->
+        <a href="#mi-programa" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-turquoise/10">
+          <span class="text-base">&#128250;</span> Mi Programa
+        </a>
+        <a href="#mis-invitados" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-turquoise/10">
+          <span class="text-base">&#128101;</span> Mis Invitados
+        </a>
+        <a href="support.php" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-turquoise/10">
+          <span class="text-base">&#128233;</span> Soporte
+        </a>
+        <?php else: ?>
         <a href="#agenda" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-turquoise/10">
           <span class="text-base">&#128197;</span> Agenda
         </a>
@@ -184,6 +205,8 @@ $isAdmin         = $user['role'] === 'Administrador';
         <a href="#inventario" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-turquoise/10">
           <span class="text-base">&#128230;</span> Inventario y Flota
         </a>
+        <?php endif; ?>
+
         <?php if ($isManager): ?>
         <a href="#admin" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-turquoise/10">
           <span class="text-base">&#9881;&#65039;</span> Administracion
@@ -252,6 +275,13 @@ $isAdmin         = $user['role'] === 'Administrador';
             <p class="text-sm text-white/70 max-w-2xl"><?php echo htmlspecialchars($roleDescription, ENT_QUOTES, 'UTF-8'); ?></p>
           </div>
 
+          <?php if ($isConductor): ?>
+          <!-- ============ ACCESOS RAPIDOS DEL CONDUCTOR (Fase 5.9) ============ -->
+          <div id="conductorHomeCards" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="skeleton h-24"></div>
+            <div class="skeleton h-24"></div>
+          </div>
+          <?php else: ?>
           <div class="rounded-2xl border border-slate-200 dark:border-turquoise/10 bg-white dark:bg-[#01243f] p-4 sm:p-5">
             <div class="flex items-center justify-between mb-3">
               <h2 class="font-display font-bold text-base">Mis Obligaciones del Llamado Activo</h2>
@@ -262,8 +292,10 @@ $isAdmin         = $user['role'] === 'Administrador';
               <div class="skeleton h-16"></div>
             </div>
           </div>
+          <?php endif; ?>
         </section>
 
+        <?php if (!$isConductor): ?>
         <!-- ============ B) AGENDA Y PREVENCION DE COLISIONES ============ -->
         <section id="agenda" class="space-y-4">
           <div class="flex items-center justify-between gap-2">
@@ -427,6 +459,7 @@ $isAdmin         = $user['role'] === 'Administrador';
             </div>
           </div>
         </section>
+        <?php endif; ?>
 
         <?php if ($isManager): ?>
         <!-- ============ D) PANEL ADMINISTRATIVO MULTI-ROL ============ -->
@@ -438,30 +471,32 @@ $isAdmin         = $user['role'] === 'Administrador';
               <span>&#10133; Crear nuevo usuario de staff</span>
               <span class="text-turquoise text-xs">Tocar para expandir</span>
             </summary>
+            <p class="px-4 sm:px-5 -mt-1 mb-2 text-xs text-slate-500 dark:text-digital-white/50">
+              El usuario nace en estatus <strong>Pendiente</strong> y recibe un correo de invitacion para crear su propia contrasena (Onboarding Fase 5.1) &mdash; no se define contrasena aqui.
+            </p>
             <form id="userForm" class="px-4 sm:px-5 pb-5 pt-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <label class="field-label">ID de usuario
-                <input type="text" name="user_id" class="field-input" required maxlength="20" placeholder="MH-0007">
-              </label>
-              <label class="field-label sm:col-span-2">Nombre completo
+              <label class="field-label sm:col-span-2 lg:col-span-3">Nombre completo
                 <input type="text" name="full_name" class="field-input" required maxlength="120" placeholder="Nombre y apellidos">
               </label>
-              <label class="field-label">Correo
+              <label class="field-label sm:col-span-2 lg:col-span-3">Correo (identificador unico del usuario)
                 <input type="email" name="email" class="field-input" required maxlength="150" placeholder="correo@mediahubbcs.com">
-              </label>
-              <label class="field-label">Contrasena temporal
-                <input type="password" name="password" class="field-input" required minlength="8" placeholder="Minimo 8 caracteres">
               </label>
               <label class="field-label">Rol
                 <select name="role" class="field-select" required>
                   <option value="Staff_Tecnico">Staff Tecnico</option>
                   <option value="Lider_Proyecto">Lider de Proyecto</option>
                   <option value="Lider_Logistica">Lider de Logistica</option>
-                  <option value="Administrador">Administrador</option>
+                  <option value="Team">Equipo Interno</option>
+                  <option value="Conductor">Conductor</option>
+                  <?php if ($isSuperAdmin): ?>
+                  <option value="Admin">Admin</option>
+                  <option value="Super_admin">Super Admin</option>
+                  <?php endif; ?>
                   <option value="Cliente">Cliente</option>
                 </select>
               </label>
               <div class="flex items-end sm:col-span-2 lg:col-span-3">
-                <button type="submit" class="btn-primary w-full sm:w-auto">Registrar Usuario</button>
+                <button type="submit" class="btn-primary w-full sm:w-auto">Enviar Invitacion</button>
               </div>
               <p class="mh-feedback text-sm sm:col-span-2 lg:col-span-3" id="userFormFeedback"></p>
             </form>
@@ -486,6 +521,186 @@ $isAdmin         = $user['role'] === 'Administrador';
               </table>
             </div>
           </div>
+
+          <?php if ($isAdmin): ?>
+          <!-- ============ SHOWS NATIVOS + CONDUCTOR INLINE (Fase 5.2) ============ -->
+          <div class="rounded-2xl border border-slate-200 dark:border-turquoise/10 bg-white dark:bg-[#01243f] overflow-hidden">
+            <div class="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+              <h3 class="font-display font-bold text-sm">Shows Nativos de Media HUB</h3>
+              <button id="refreshNativeShowsBtn" type="button" class="btn-ghost">Actualizar</button>
+            </div>
+
+            <form id="nativeShowForm" class="px-4 sm:px-5 py-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" enctype="multipart/form-data">
+              <label class="field-label sm:col-span-2 lg:col-span-3">Nombre del show
+                <input type="text" name="name" class="field-input" required maxlength="150" placeholder="Ej. Media HUB Live">
+              </label>
+              <label class="field-label sm:col-span-2 lg:col-span-3">Descripcion conceptual (catalogo publico)
+                <textarea name="catalog_description" class="field-input" rows="2" maxlength="600" placeholder="Descripcion breve para la Landing publica"></textarea>
+              </label>
+              <div class="field-label sm:col-span-2 lg:col-span-3">
+                <span>Redes sociales del programa <span class="text-xs font-normal text-slate-400">(opcional, agrega las que necesites)</span></span>
+                <div id="socialLinksRows" class="space-y-2 mt-1"></div>
+                <button type="button" id="addSocialLinkBtn" class="btn-ghost text-xs mt-2">&#10133; Agregar red social</button>
+                <input type="hidden" name="public_social_links_json" id="socialLinksJsonInput">
+              </div>
+
+              <fieldset class="sm:col-span-2 lg:col-span-3 border border-slate-200 dark:border-white/10 rounded-xl p-3">
+                <legend class="text-xs font-display font-semibold px-1 text-turquoise">Calendario de produccion</legend>
+                <div class="flex flex-wrap gap-2 mb-3" id="scheduleDays">
+                  <?php foreach (['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'] as $day): ?>
+                  <label class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-slate-200 dark:border-white/10 cursor-pointer">
+                    <input type="checkbox" name="schedule_days[]" value="<?php echo $day; ?>" class="accent-turquoise">
+                    <?php echo $day; ?>
+                  </label>
+                  <?php endforeach; ?>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <label class="field-label">Hora inicio
+                    <input type="time" name="schedule_start_time" class="field-input">
+                  </label>
+                  <label class="field-label">Hora fin
+                    <input type="time" name="schedule_end_time" class="field-input">
+                  </label>
+                </div>
+              </fieldset>
+
+              <label class="field-label sm:col-span-2 lg:col-span-3">Logotipo del show
+                <input type="file" name="logo" accept="image/png,image/jpeg,image/webp" class="field-input">
+              </label>
+
+              <div class="sm:col-span-2 lg:col-span-3 border border-dashed border-turquoise/40 rounded-xl p-3">
+                <label class="inline-flex items-center gap-2 text-sm font-medium cursor-pointer">
+                  <input type="checkbox" id="createConductorToggle" class="accent-turquoise">
+                  &#127908; Crear nuevo Conductor para este programa
+                </label>
+                <div id="conductorInlineFields" class="hidden mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label class="field-label">Nombre completo del Conductor
+                    <input type="text" name="conductor_full_name" class="field-input" maxlength="120" placeholder="Nombre y apellidos">
+                  </label>
+                  <label class="field-label sm:col-span-2">Correo del Conductor
+                    <input type="email" name="conductor_email" class="field-input" maxlength="150" placeholder="conductor@mediahubbcs.com">
+                  </label>
+                  <p class="text-xs text-slate-500 dark:text-digital-white/50 sm:col-span-2">
+                    Se creara con rol Conductor en estatus Pendiente y recibira la invitacion para crear su contrasena.
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex items-end sm:col-span-2 lg:col-span-3">
+                <button type="submit" class="btn-primary w-full sm:w-auto">Crear Show Nativo</button>
+              </div>
+              <p class="mh-feedback text-sm sm:col-span-2 lg:col-span-3" id="nativeShowFormFeedback"></p>
+            </form>
+
+            <div class="px-4 sm:px-5 pb-5">
+              <div id="nativeShowsList" class="space-y-3">
+                <div class="skeleton h-20"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ============ PRUEBA DE HUMO: FLUJO DE ONBOARDING (Fase 5.2) ============ -->
+          <div class="rounded-2xl border border-dashed border-amber-400/50 bg-amber-50 dark:bg-amber-500/5 p-4 sm:p-5">
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <h3 class="font-display font-bold text-sm text-amber-700 dark:text-amber-400">Prueba de Humo &mdash; Flujo Completo de Onboarding</h3>
+                <p class="text-xs text-slate-600 dark:text-digital-white/50 mt-1 max-w-xl">
+                  Crea un usuario de prueba real (rol Team) para validar visualmente Plantilla 1 &rarr; <code>set_password.php</code> &rarr; Plantilla 2 &rarr; cookie de 60 dias. Llega a la bandeja de pruebas configurada en <code>.env</code>.
+                </p>
+              </div>
+              <button id="smokeTestBtn" type="button" class="btn-primary shrink-0">Simular Flujo Onboarding completo</button>
+            </div>
+            <p class="mh-feedback text-sm mt-2" id="smokeTestFeedback"></p>
+          </div>
+          <?php endif; ?>
+        </section>
+        <?php endif; ?>
+
+        <?php if ($isConductor): ?>
+        <!-- ============ MI PROGRAMA (Fase 5.9 — Ligereza Maritima) ============ -->
+        <section id="mi-programa" class="space-y-4">
+          <h2 class="font-display font-bold text-lg">Mi Programa</h2>
+
+          <div id="conductorShowCard" class="rounded-2xl border border-slate-200 dark:border-turquoise/10 bg-white dark:bg-[#01243f] p-4 sm:p-5">
+            <div class="skeleton h-24"></div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 dark:border-turquoise/10 bg-white dark:bg-[#01243f] p-4 sm:p-5">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <h3 class="font-display font-bold text-base">Configuracion de tu Ficha Publica e Invitaciones</h3>
+              <button id="toggleConductorProfileFormBtn" type="button" class="btn-ghost">Editar</button>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-digital-white/50 mb-3">
+              Los datos y notas que configures en este panel personalizaran de forma automatica el diseno, las recomendaciones y los botones de contacto directo que veran tus invitados al abrir su enlace de registro.
+            </p>
+            <form id="conductorProfileForm" class="hidden space-y-5">
+
+              <div class="space-y-3">
+                <p class="text-xs font-display font-bold uppercase tracking-wide text-turquoise">Identidad del show</p>
+                <label class="field-label">Canal / medio afiliado
+                  <input type="text" name="affiliated_channel" class="field-input" maxlength="150" placeholder="Ej. El Jornal BCS">
+                </label>
+                <label class="field-label">Recomendaciones fijas para tus invitados
+                  <textarea name="conductor_notes" class="field-input" rows="3" maxlength="2000" placeholder="Se muestra a todos los invitados de tu programa"></textarea>
+                </label>
+              </div>
+
+              <div class="space-y-2">
+                <p class="text-xs font-display font-bold uppercase tracking-wide text-turquoise">Redes sociales del show</p>
+                <div id="conductorSocialLinksRows" class="space-y-2"></div>
+                <button type="button" id="addConductorSocialLinkBtn" class="btn-ghost text-xs">&#10133; Agregar red social</button>
+              </div>
+
+              <div class="space-y-3">
+                <p class="text-xs font-display font-bold uppercase tracking-wide text-turquoise">Contacto directo con tus invitados</p>
+                <label class="field-label">Tu WhatsApp
+                  <input type="text" name="whatsapp" class="field-input" maxlength="30" placeholder="+52 612 000 0000">
+                </label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="show_whatsapp_publicly" class="accent-turquoise">
+                    Mostrar mi WhatsApp a mis invitados
+                  </label>
+                  <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="show_email_publicly" class="accent-turquoise">
+                    Mostrar mi Email a mis invitados
+                  </label>
+                </div>
+              </div>
+
+              <p class="mh-feedback text-sm" id="conductorProfileFeedback"></p>
+              <button type="submit" class="btn-primary">Guardar Ficha</button>
+            </form>
+          </div>
+        </section>
+
+        <!-- ============ MIS INVITADOS (Fase 5.9 — prioridad al Siguiente Programa) ============ -->
+        <section id="mis-invitados" class="space-y-4">
+          <h2 class="font-display font-bold text-lg">Mis Invitados</h2>
+
+          <!-- ============ PRIORIDAD 1: SIGUIENTE PROGRAMA ============ -->
+          <div class="rounded-2xl border border-turquoise/30 bg-white dark:bg-[#01243f] p-4 sm:p-5">
+            <h3 class="font-display font-bold text-base mb-3">Siguiente Programa</h3>
+            <div id="nextCallCard" class="space-y-3">
+              <div class="skeleton h-16"></div>
+            </div>
+          </div>
+
+          <!-- ============ PRIORIDAD 2: ESTATUS DE CINTILLOS Y DATOS DE INVITADOS ============ -->
+          <div class="rounded-2xl border border-slate-200 dark:border-turquoise/10 bg-white dark:bg-[#01243f] p-4 sm:p-5">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <h3 class="font-display font-bold text-base">Estatus de Cintillos y Datos de Invitados</h3>
+              <button id="generateGuestLinkBtn" type="button" class="btn-primary">Generar enlace individual</button>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-digital-white/50 mb-3">
+              Aqui puedes ver que informacion ya envio cada invitado. Verde = listo para pantalla en vivo. Ambar = faltan datos opcionales. Gris = el invitado aun no ha respondido.
+            </p>
+            <p class="mh-feedback text-sm mb-2" id="guestLinkFeedback"></p>
+            <div id="guestLinksGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div class="skeleton h-28"></div>
+            </div>
+          </div>
+
         </section>
         <?php endif; ?>
 
@@ -508,8 +723,10 @@ $isAdmin         = $user['role'] === 'Administrador';
     window.MH_CSRF       = <?php echo json_encode($csrfToken); ?>;
     window.MH_ROLE       = <?php echo json_encode($user['role']); ?>;
     window.MH_USER_ID    = <?php echo json_encode($user['user_id']); ?>;
-    window.MH_IS_MANAGER = <?php echo $isManager ? 'true' : 'false'; ?>;
-    window.MH_IS_ADMIN   = <?php echo $isAdmin ? 'true' : 'false'; ?>;
+    window.MH_IS_MANAGER     = <?php echo $isManager ? 'true' : 'false'; ?>;
+    window.MH_IS_ADMIN       = <?php echo $isAdmin ? 'true' : 'false'; ?>;
+    window.MH_IS_SUPER_ADMIN = <?php echo $isSuperAdmin ? 'true' : 'false'; ?>;
+    window.MH_IS_CONDUCTOR   = <?php echo $isConductor ? 'true' : 'false'; ?>;
   </script>
   <script src="../assets/js/dashboard.js" defer></script>
 </body>

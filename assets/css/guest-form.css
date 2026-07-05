@@ -1,0 +1,392 @@
+/*
+ * Media HUB — Guest Onboarding (guest_form.php)
+ * Fase 5.8 — Light Mode dedicado: esta pagina se le presenta al invitado
+ * como el show del Conductor que lo invito (no como "Media HUB"), por lo
+ * que usa su propia paleta clara y NO depende de assets/css/main.css ni
+ * del toggle de tema del Dashboard.
+ */
+
+:root {
+    --gf-bg-1: #f4f8fb;
+    --gf-bg-2: #eef6f6;
+    --gf-panel-bg: #ffffff;
+    --gf-border: #dfe8ec;
+    --gf-text-main: #0b2338;
+    --gf-text-soft: #5b7280;
+    --gf-field-bg: #f7fafc;
+    --gf-deep-sea: #022D53;
+    --gf-turquoise: #00A79A;
+    --gf-turquoise-light: #00BFB2;
+    --gf-orange: #E14A2B;
+    --gf-valid: #1E9E6B;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    min-height: 100%;
+}
+
+.gf-body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem 1rem 2.5rem;
+    font-family: "Roboto", sans-serif;
+    background:
+        radial-gradient(circle at 15% 10%, rgba(0, 191, 178, 0.10), transparent 42%),
+        radial-gradient(circle at 85% 90%, rgba(0, 167, 154, 0.10), transparent 40%),
+        linear-gradient(160deg, var(--gf-bg-1), var(--gf-bg-2));
+    color: var(--gf-text-main);
+}
+
+.gf-shell {
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.gf-card {
+    background: var(--gf-panel-bg);
+    border: 1px solid var(--gf-border);
+    border-radius: 1.25rem;
+    padding: 1.75rem;
+    box-shadow: 0 12px 32px rgba(2, 45, 83, 0.08);
+}
+
+.gf-state {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.gf-loading-text {
+    color: var(--gf-text-soft);
+}
+
+.hidden {
+    display: none !important;
+}
+
+.gf-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.gf-logo {
+    width: 64px;
+    height: 64px;
+    aspect-ratio: 1 / 1;
+    object-fit: contain;
+    border-radius: 0.75rem;
+    background: var(--gf-field-bg);
+    border: 1px solid var(--gf-border);
+    flex-shrink: 0;
+}
+
+.gf-eyebrow {
+    display: block;
+    color: var(--gf-turquoise);
+    font-family: "Montserrat", sans-serif;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.35rem;
+}
+
+.gf-title {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 800;
+    font-size: 1.5rem;
+    color: var(--gf-deep-sea);
+    margin: 0 0 0.4rem;
+}
+
+.gf-text {
+    color: var(--gf-text-soft);
+    font-size: 0.92rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.gf-invite-line {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--gf-text-main);
+    margin: 0 0 1.25rem;
+    line-height: 1.5;
+}
+
+.gf-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 1rem 1.1rem;
+    border-radius: 0.9rem;
+    background: var(--gf-field-bg);
+    border: 1px solid var(--gf-border);
+    margin-bottom: 1.25rem;
+}
+
+.gf-meta-item {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--gf-text-soft);
+}
+
+.gf-meta-item strong {
+    color: var(--gf-text-main);
+}
+
+.gf-notes,
+.gf-contact {
+    padding: 1rem 1.1rem;
+    border-radius: 0.9rem;
+    background: rgba(0, 167, 154, 0.06);
+    border: 1px solid rgba(0, 167, 154, 0.25);
+    margin-bottom: 1.25rem;
+}
+
+.gf-notes-label {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--gf-turquoise);
+    margin: 0 0 0.4rem;
+}
+
+.gf-contact-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.gf-contact-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid var(--gf-border);
+    background: #fff;
+    color: var(--gf-text-main);
+}
+
+.gf-contact-btn:hover {
+    filter: brightness(0.98);
+}
+
+.gf-contact-btn.gf-contact-whatsapp {
+    border-color: rgba(37, 211, 102, 0.4);
+    color: #178a43;
+}
+
+.gf-contact-btn.gf-contact-email {
+    border-color: rgba(0, 167, 154, 0.4);
+    color: var(--gf-turquoise);
+}
+
+.gf-banner {
+    background: rgba(225, 74, 43, 0.08);
+    border: 1px solid rgba(225, 74, 43, 0.3);
+    color: var(--gf-orange);
+    border-radius: 0.75rem;
+    padding: 0.8rem 1rem;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    margin-bottom: 1.25rem;
+}
+
+/* Fase 5.10 — Alerta operativa de arribo, dentro del contenedor de cita. */
+.gf-arrival-banner {
+    background: rgba(0, 167, 154, 0.08);
+    border: 1px solid rgba(0, 167, 154, 0.3);
+    color: var(--gf-text-main);
+    border-radius: 0.65rem;
+    padding: 0.7rem 0.9rem;
+    font-family: "Roboto", sans-serif;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    margin: 0.4rem 0 0;
+}
+
+.gf-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+
+.gf-fieldset {
+    border: 1px solid var(--gf-border);
+    border-radius: 0.9rem;
+    padding: 1rem 1.1rem 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.gf-fieldset legend {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: var(--gf-turquoise);
+    padding: 0 0.4rem;
+}
+
+.gf-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.gf-field label {
+    font-size: 0.85rem;
+    color: var(--gf-text-main);
+    font-weight: 500;
+}
+
+.gf-required {
+    color: var(--gf-orange);
+}
+
+.gf-optional {
+    color: var(--gf-text-soft);
+    font-weight: 400;
+    font-size: 0.78rem;
+}
+
+.gf-field input,
+.gf-field textarea {
+    background: var(--gf-field-bg);
+    border: 1px solid var(--gf-border);
+    border-radius: 0.6rem;
+    padding: 0.65rem 0.8rem;
+    color: var(--gf-text-main);
+    font-family: "Roboto", sans-serif;
+    font-size: 0.92rem;
+    resize: vertical;
+}
+
+.gf-field input:focus,
+.gf-field textarea:focus {
+    outline: none;
+    border-color: var(--gf-turquoise);
+}
+
+.gf-field.gf-invalid input {
+    border-color: var(--gf-orange);
+}
+
+.gf-field-message {
+    min-height: 1em;
+    font-size: 0.75rem;
+    color: var(--gf-orange);
+}
+
+.gf-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    padding: 0.7rem 1.4rem;
+    font-family: "Montserrat", sans-serif;
+    font-weight: 700;
+    font-size: 0.88rem;
+    text-decoration: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: filter 0.15s ease, background 0.15s ease;
+}
+
+.gf-btn-primary {
+    background: var(--gf-turquoise);
+    color: #ffffff;
+}
+
+.gf-btn-primary:hover {
+    filter: brightness(1.06);
+}
+
+.gf-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.gf-btn-outline {
+    background: transparent;
+    border-color: var(--gf-turquoise);
+    color: var(--gf-turquoise);
+    align-self: flex-start;
+}
+
+.gf-btn-outline:hover {
+    background: rgba(0, 167, 154, 0.08);
+}
+
+.gf-btn-block {
+    width: 100%;
+}
+
+.gf-system-message {
+    min-height: 1.2em;
+    font-size: 0.85rem;
+    text-align: center;
+    margin: 0;
+}
+
+.gf-system-message.gf-success {
+    color: var(--gf-valid);
+}
+
+.gf-system-message.gf-error {
+    color: var(--gf-orange);
+}
+
+.gf-clicks-left {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--gf-text-soft);
+    margin: 0;
+}
+
+.gf-footer {
+    text-align: center;
+    color: var(--gf-text-soft);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    padding: 0.5rem 0 1rem;
+}
+
+.gf-footer-credit {
+    font-size: 0.72rem;
+    opacity: 0.75;
+}
+
+@media (min-width: 640px) {
+    .gf-card {
+        padding: 2.25rem;
+    }
+
+    .gf-title {
+        font-size: 1.8rem;
+    }
+}

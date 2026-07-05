@@ -33,7 +33,7 @@ $pdo = Database::getInstance()->getConnection();
  */
 function mh_checklist_assert_access(PDO $pdo, array $currentUser, int $callId): void
 {
-    if (in_array($currentUser['role'], ['Administrador', 'Lider_Proyecto'], true)) {
+    if (in_array($currentUser['role'], ['Super_admin', 'Admin', 'Lider_Proyecto'], true)) {
         return;
     }
 

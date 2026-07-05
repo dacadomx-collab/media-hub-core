@@ -35,13 +35,19 @@ if (!csrf_validate($_POST['csrf_token'] ?? null)) {
 $pdo = Database::getInstance()->getConnection();
 $userId = (int) $_SESSION['user_id'];
 
+// Fase 5.8 — Handshake Legal Condicional: solo se exigen/actualizan los
+// documentos que legal_document_roles asigna al rol de la sesion (debe
+// coincidir exactamente con el filtro de legal/firma.php).
+$role = (string) $_SESSION['role'];
+
 $stmt = $pdo->prepare(
     'SELECT d.id, d.code, d.title
      FROM legal_documents d
      JOIN user_legal_signatures s ON s.document_id = d.id
+     INNER JOIN legal_document_roles ldr ON ldr.document_id = d.id AND ldr.role = :role
      WHERE s.user_id = :user_id AND s.signed = 0'
 );
-$stmt->execute(['user_id' => $userId]);
+$stmt->execute(['user_id' => $userId, 'role' => $role]);
 $pendingDocs = $stmt->fetchAll();
 
 $ack = $_POST['ack'] ?? [];
@@ -63,14 +69,20 @@ if (!$allAccepted || !$signatureMatches) {
     exit;
 }
 
+// Solo se marcan como firmados los documentos que legal_document_roles
+// exige para este rol -- no todos los signed=0 del usuario -- para no
+// firmar "de facto" un documento que ni siquiera se le mostro.
 $update = $pdo->prepare(
-    'UPDATE user_legal_signatures
-     SET signed = 1, signed_at = NOW(), ip_address = :ip
-     WHERE user_id = :user_id AND signed = 0'
+    'UPDATE user_legal_signatures uls
+     INNER JOIN legal_document_roles ldr ON ldr.document_id = uls.document_id AND ldr.role = :role
+     SET uls.signed = 1, uls.signed_at = NOW(), uls.ip_address = :ip, uls.signer_full_name = :signer_full_name
+     WHERE uls.user_id = :user_id AND uls.signed = 0'
 );
 $update->execute([
-    'ip'      => $_SERVER['REMOTE_ADDR'] ?? null,
-    'user_id' => $userId,
+    'role'              => $role,
+    'ip'                => $_SERVER['REMOTE_ADDR'] ?? null,
+    'signer_full_name'  => $signatureName,
+    'user_id'           => $userId,
 ]);
 
 header('Location: ../dashboard/index.php');

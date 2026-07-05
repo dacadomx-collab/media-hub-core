@@ -127,7 +127,7 @@ try {
 
         // Si se asocia a un llamado, solo el staff asignado o un
         // Lider_Proyecto/Administrador pueden realizar el check-out.
-        if ($callId !== null && !in_array($currentUser['role'], ['Administrador', 'Lider_Proyecto'], true)) {
+        if ($callId !== null && !in_array($currentUser['role'], ['Super_admin', 'Admin', 'Lider_Proyecto'], true)) {
             $assignStmt = $pdo->prepare(
                 'SELECT COUNT(*) AS total FROM call_assignments WHERE call_id = :call_id AND user_id = :user_id'
             );
@@ -233,7 +233,7 @@ try {
     // POST action=set_maintenance — Marca el activo como 'Mantenimiento'
     // -----------------------------------------------------------------
     if ($method === 'POST' && $action === 'set_maintenance') {
-        mh_require_role($currentUser, ['Administrador', 'Lider_Proyecto']);
+        mh_require_role($currentUser, ['Super_admin', 'Admin', 'Lider_Proyecto']);
 
         $payload = mh_read_json_body();
         mh_guard_request($payload, 'inventory_set_maintenance');

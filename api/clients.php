@@ -29,7 +29,7 @@ try {
     // GET ?action=list — Listado de clientes Jornal
     // -----------------------------------------------------------------
     if ($method === 'GET' && $action === 'list') {
-        mh_require_role($currentUser, ['Administrador', 'Lider_Proyecto']);
+        mh_require_role($currentUser, ['Super_admin', 'Admin', 'Lider_Proyecto']);
 
         $stmt = $pdo->query(
             'SELECT c.id, c.full_name, c.email, c.phone, c.company, c.is_active, c.created_at,
@@ -45,7 +45,7 @@ try {
     // POST action=create — Alta de cliente
     // -----------------------------------------------------------------
     if ($method === 'POST' && $action === 'create') {
-        mh_require_role($currentUser, ['Administrador', 'Lider_Proyecto']);
+        mh_require_role($currentUser, ['Super_admin', 'Admin', 'Lider_Proyecto']);
 
         $payload = mh_read_json_body();
         mh_guard_request($payload, 'clients_create');
@@ -81,7 +81,7 @@ try {
     // PUT action=update — Edicion de datos de contacto
     // -----------------------------------------------------------------
     if ($method === 'PUT' && $action === 'update') {
-        mh_require_role($currentUser, ['Administrador', 'Lider_Proyecto']);
+        mh_require_role($currentUser, ['Super_admin', 'Admin', 'Lider_Proyecto']);
 
         $payload = mh_read_json_body();
         mh_guard_request($payload, 'clients_update');
@@ -136,7 +136,7 @@ try {
     // POST action=deactivate — Baja logica (solo Administrador)
     // -----------------------------------------------------------------
     if ($method === 'POST' && $action === 'deactivate') {
-        mh_require_role($currentUser, ['Administrador']);
+        mh_require_role($currentUser, ['Super_admin', 'Admin']);
 
         $payload = mh_read_json_body();
         mh_guard_request($payload, 'clients_deactivate');
@@ -157,7 +157,7 @@ try {
     // POST action=activate — Reactivacion (solo Administrador)
     // -----------------------------------------------------------------
     if ($method === 'POST' && $action === 'activate') {
-        mh_require_role($currentUser, ['Administrador']);
+        mh_require_role($currentUser, ['Super_admin', 'Admin']);
 
         $payload = mh_read_json_body();
         mh_guard_request($payload, 'clients_activate');

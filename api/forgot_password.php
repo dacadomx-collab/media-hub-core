@@ -64,7 +64,7 @@ try {
             'expires_at' => $expiresAt,
         ]);
 
-        $appUrl   = rtrim(mh_app_env('APP_URL', ''), '/');
+        $appUrl   = mh_detect_base_url();
         $query    = 'uid=' . $user['id'] . '&token=' . $tokenRaw;
         $resetUrl = $appUrl !== '' ? $appUrl . '/reset_password.php?' . $query : 'reset_password.php?' . $query;
 

@@ -18,6 +18,7 @@ require_once __DIR__ . '/../config/Database.php';
 require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/response.php';
+require_once __DIR__ . '/auth_guard.php';
 
 const MH_MAX_FAILED_ATTEMPTS = 5;
 
@@ -140,14 +141,18 @@ try {
     $_SESSION['role']       = $user['role'];
     $_SESSION['email']      = $user['email'];
 
-    // Verifica banderas de firma legal (Estandar Oro - Modulo Legal Integrado).
-    $pending = $pdo->prepare(
-        'SELECT COUNT(*) AS pending
-         FROM user_legal_signatures
-         WHERE user_id = :user_id AND signed = 0'
-    );
-    $pending->execute(['user_id' => $user['id']]);
-    $pendingCount = (int) $pending->fetch()['pending'];
+    // ---------------------------------------------------------------
+    // "Recuerdame por 60 dias" (Fase 5.1): token aleatorio de 256 bits en
+    // cookie HttpOnly/Secure/SameSite=Strict; solo el hash HMAC vive en
+    // user_remember_tokens (mismo esquema que password_resets).
+    // ---------------------------------------------------------------
+    if (!empty($_POST['remember_me'])) {
+        mh_issue_remember_token($pdo, (int) $user['id']);
+    }
+
+    // Verifica banderas de firma legal, filtradas por rol (Fase 5.8 —
+    // Handshake Legal Condicional. Ver api/response.php::mh_count_pending_signatures()).
+    $pendingCount = mh_count_pending_signatures($pdo, (int) $user['id'], $user['role']);
 
     if ($pendingCount > 0) {
         header('Location: ../legal/firma.php');

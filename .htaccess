@@ -1,0 +1,80 @@
+# =====================================================================
+# MEDIA HUB — Blindaje Apache Nivel Militar (Mandamiento 11 / 12 / 2)
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# 1. Desactivar listado de directorios (Indexes)
+# ---------------------------------------------------------------------
+Options -Indexes
+Options -MultiViews
+
+# ---------------------------------------------------------------------
+# 2. Bloqueo de archivos sensibles por extension/nombre (cualquier ruta)
+# ---------------------------------------------------------------------
+<FilesMatch "(\.env|\.env\.example|\.log|\.sql|\.md|composer\.(json|lock)|\.gitignore|\.gitattributes)$">
+    Require all denied
+</FilesMatch>
+
+# Bloqueo explicito de archivos de diagnostico/instalacion que NUNCA
+# deben ser accesibles en produccion (ver CLAUDE.md Seccion 4 y 8).
+<FilesMatch "^(genesis|setup_superadmin|db_test|test_hub_connection)\.php$">
+    Require all denied
+</FilesMatch>
+
+# ---------------------------------------------------------------------
+# 3. Bloqueo de carpetas internas completas
+# ---------------------------------------------------------------------
+RewriteEngine On
+
+RewriteRule ^knowledge/ - [F,L]
+RewriteRule ^config/ - [F,L]
+RewriteRule ^database/ - [F,L]
+RewriteRule ^\.git/ - [F,L]
+RewriteRule ^\.github/ - [F,L]
+
+# api/debug_db.php y api/test_integration.php son SOLO diagnostico local
+# (ver CLAUDE.md Seccion 4/8) - bloqueados explicitamente por si llegan
+# a subirse a produccion por error. Bloqueo TOTAL, sin excepcion de IP:
+# ambos ya escriben/leen datos reales de la BD sin proteccion de red.
+RewriteRule ^api/(debug_db|test_integration)\.php$ - [F,L]
+
+# api/test_smtp_delivery.php es de SOLO LECTURA/diagnostico de red (no
+# toca la BD) -- se le permite una excepcion de acceso restringida SOLO
+# a peticiones que se originan en localhost (127.0.0.1/::1). La
+# autenticacion real sigue siendo MH_DEBUG_TOKEN, validado con
+# hash_equals() DENTRO del script PHP -- esta regla de Apache NO conoce
+# ni duplica ese secreto, solo acota el origen de red como capa adicional.
+# En el servidor de produccion, REMOTE_ADDR jamas sera 127.0.0.1/::1, por
+# lo que el archivo queda bloqueado igual que en produccion sin necesidad
+# de una regla explicita adicional.
+<Files "test_smtp_delivery.php">
+    <RequireAny>
+        Require ip 127.0.0.1
+        Require ip ::1
+    </RequireAny>
+</Files>
+
+# ---------------------------------------------------------------------
+# 4. Proteccion de /uploads (si/cuando exista): sin ejecucion de PHP
+# ---------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteCond %{REQUEST_URI} ^/uploads/
+    RewriteCond %{REQUEST_URI} \.(php|phtml|php3|php4|php5|phar)$ [NC]
+    RewriteRule .* - [F,L]
+</IfModule>
+
+# ---------------------------------------------------------------------
+# 5. Cabeceras de seguridad HTTP (Mandamiento 18 - Auditoria perimetral)
+# ---------------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header unset X-Powered-By
+</IfModule>
+
+# ---------------------------------------------------------------------
+# 6. Ocultar firma del servidor
+# ---------------------------------------------------------------------
+ServerSignature Off

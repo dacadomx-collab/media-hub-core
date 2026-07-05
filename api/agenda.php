@@ -6,10 +6,17 @@
  *
  * Acciones soportadas (contrato { status, message, data }):
  *   GET  ?action=list          -> Listado de llamados (filtros: from, to, location, program_id).
+ *                                 Rol Conductor: program_id es OBLIGATORIO y debe ser su propio
+ *                                 show nativo (403 si no) -- la respuesta omite columnas
+ *                                 financieras (Fase 5.5). LEFT JOIN clients (no INNER): los
+ *                                 llamados de shows nativos (client_id NULL) ya no se ocultan.
  *   POST action=create_call    -> Alta de llamado con ALGORITMO DE INMUNIDAD ANTE SOBRE-RESERVAS.
  *   POST action=assign_staff   -> Asigna staff a un llamado (exige anticipo 50% verificado).
  *   PUT  action=update_status  -> Cambia el estatus del llamado (Confirmado/Cancelado/Completado).
  *   PUT  action=verify_advance -> Verifica/desverifica el anticipo del 50% (solo Administrador).
+ *   PUT  action=update_episode_theme  -> El Conductor fija el tema de un llamado propio.
+ *   POST action=save_conductor_call   -> El Conductor crea/actualiza el llamado de su propio
+ *                                        show desde el planner "Siguiente Programa" (Fase 5.10).
  */
 
 session_start();
@@ -34,6 +41,29 @@ try {
     // GET ?action=list — Listado de llamados con filtros opcionales
     // -----------------------------------------------------------------
     if ($method === 'GET' && $action === 'list') {
+        // -----------------------------------------------------------------
+        // Alcance por rol (Fase 5.5): el rol Conductor SOLO puede listar los
+        // llamados de su propio show nativo (nunca de otros programas, ni
+        // financieros de Clientes Jornal) -- exige program_id y valida
+        // propiedad contra programs.conductor_user_id antes de continuar.
+        // -----------------------------------------------------------------
+        $isConductorScope = $currentUser['role'] === 'Conductor';
+
+        if ($isConductorScope) {
+            $programId = (int) ($_GET['program_id'] ?? 0);
+            if ($programId <= 0) {
+                mh_json_response('error', 'Falta el parametro program_id.', [], 422);
+            }
+
+            $ownStmt = $pdo->prepare('SELECT conductor_user_id FROM programs WHERE id = :id AND is_native_show = 1');
+            $ownStmt->execute(['id' => $programId]);
+            $owner = $ownStmt->fetch();
+
+            if (!$owner || (int) $owner['conductor_user_id'] !== (int) $currentUser['user_id']) {
+                mh_json_response('error', 'No eres el conductor asignado a este show.', [], 403);
+            }
+        }
+
         $where  = [];
         $params = [];
 
@@ -54,13 +84,16 @@ try {
             $params['program_id'] = (int) $_GET['program_id'];
         }
 
+        // LEFT JOIN (no INNER): los llamados de Shows Nativos tienen
+        // programs.client_id NULL -- un INNER JOIN los ocultaba por completo
+        // (bug confirmado Fase 5.5, calls de Conductor invisibles).
         $sql = 'SELECT c.id, c.title, c.location, c.call_date, c.start_time, c.end_time,
                        c.status, c.advance_required_pct, c.advance_paid, c.total_amount,
-                       c.notes, p.id AS program_id, p.name AS program_name,
+                       c.notes, c.episode_theme, p.id AS program_id, p.name AS program_name,
                        cl.full_name AS client_name, cl.company AS client_company
                 FROM calls c
                 INNER JOIN programs p ON p.id = c.program_id
-                INNER JOIN clients cl ON cl.id = p.client_id';
+                LEFT JOIN clients cl ON cl.id = p.client_id';
 
         if ($where !== []) {
             $sql .= ' WHERE ' . implode(' AND ', $where);
@@ -70,6 +103,14 @@ try {
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $calls = $stmt->fetchAll();
+
+        // El Conductor nunca ve columnas financieras (Fase 5.5).
+        if ($isConductorScope) {
+            foreach ($calls as &$call) {
+                unset($call['advance_required_pct'], $call['advance_paid'], $call['total_amount'], $call['notes']);
+            }
+            unset($call);
+        }
 
         if ($calls !== []) {
             $callIds  = array_column($calls, 'id');
@@ -101,7 +142,7 @@ try {
     // POST action=create_call — Alta de llamado con control de colisiones
     // -----------------------------------------------------------------
     if ($method === 'POST' && $action === 'create_call') {
-        mh_require_role($currentUser, ['Administrador', 'Lider_Proyecto']);
+        mh_require_role($currentUser, ['Super_admin', 'Admin', 'Lider_Proyecto']);
 
         $payload = mh_read_json_body();
         mh_guard_request($payload, 'agenda_create_call');
@@ -177,7 +218,7 @@ try {
     // POST action=assign_staff — Asigna staff a un llamado
     // -----------------------------------------------------------------
     if ($method === 'POST' && $action === 'assign_staff') {
-        mh_require_role($currentUser, ['Administrador', 'Lider_Proyecto']);
+        mh_require_role($currentUser, ['Super_admin', 'Admin', 'Lider_Proyecto']);
 
         $payload = mh_read_json_body();
         mh_guard_request($payload, 'agenda_assign_staff');
@@ -244,7 +285,7 @@ try {
     // PUT action=update_status — Cambia el estatus de un llamado
     // -----------------------------------------------------------------
     if ($method === 'PUT' && $action === 'update_status') {
-        mh_require_role($currentUser, ['Administrador', 'Lider_Proyecto']);
+        mh_require_role($currentUser, ['Super_admin', 'Admin', 'Lider_Proyecto']);
 
         $payload = mh_read_json_body();
         mh_guard_request($payload, 'agenda_update_status');
@@ -288,7 +329,7 @@ try {
     // PUT action=verify_advance — Verifica el anticipo del 50% (Administrador)
     // -----------------------------------------------------------------
     if ($method === 'PUT' && $action === 'verify_advance') {
-        mh_require_role($currentUser, ['Administrador']);
+        mh_require_role($currentUser, ['Super_admin', 'Admin']);
 
         $payload = mh_read_json_body();
         mh_guard_request($payload, 'agenda_verify_advance');
@@ -348,6 +389,160 @@ try {
         }
 
         mh_json_response('success', 'Estatus de anticipo actualizado.', ['id' => $callId, 'advance_paid' => $advancePaid]);
+    }
+
+    // -----------------------------------------------------------------
+    // PUT action=update_episode_theme — El Conductor fija el tema del
+    // episodio para un llamado de SU PROPIO show (Fase 5.8 — planner
+    // "Siguiente Programa").
+    // -----------------------------------------------------------------
+    if ($method === 'PUT' && $action === 'update_episode_theme') {
+        mh_require_role($currentUser, ['Conductor']);
+
+        $payload = mh_read_json_body();
+        mh_guard_request($payload, 'agenda_update_episode_theme');
+        mh_require_csrf($payload);
+
+        $callId        = (int) ($payload['call_id'] ?? 0);
+        $episodeTheme  = trim((string) ($payload['episode_theme'] ?? ''));
+
+        if ($callId <= 0) {
+            mh_json_response('error', 'Falta el campo call_id.', [], 422);
+        }
+
+        $ownStmt = $pdo->prepare(
+            'SELECT p.conductor_user_id
+             FROM calls c
+             INNER JOIN programs p ON p.id = c.program_id
+             WHERE c.id = :call_id'
+        );
+        $ownStmt->execute(['call_id' => $callId]);
+        $owner = $ownStmt->fetch();
+
+        if (!$owner || (int) $owner['conductor_user_id'] !== (int) $currentUser['user_id']) {
+            mh_json_response('error', 'No eres el conductor asignado a este llamado.', [], 403);
+        }
+
+        $stmt = $pdo->prepare('UPDATE calls SET episode_theme = :episode_theme WHERE id = :id');
+        $stmt->execute([
+            'episode_theme' => $episodeTheme !== '' ? $episodeTheme : null,
+            'id'            => $callId,
+        ]);
+
+        mh_json_response('success', 'Tema del episodio actualizado.', ['id' => $callId, 'episode_theme' => $episodeTheme]);
+    }
+
+    // -----------------------------------------------------------------
+    // POST action=save_conductor_call — El Conductor crea o actualiza el
+    // llamado de SU PROPIO show desde el planner "Siguiente Programa"
+    // (Fase 5.10). Un solo llamado cubre alta y edicion: si viene call_id
+    // se actualiza (respetando su propiedad), si no, se crea uno nuevo con
+    // los valores predictivos que ya calculo el frontend (proximo miercoles,
+    // 17:00-17:30) o los que el Conductor haya modificado a mano.
+    // -----------------------------------------------------------------
+    if ($method === 'POST' && $action === 'save_conductor_call') {
+        mh_require_role($currentUser, ['Conductor']);
+
+        $payload = mh_read_json_body();
+        mh_guard_request($payload, 'agenda_save_conductor_call');
+        mh_require_csrf($payload);
+
+        $programId    = (int) ($payload['program_id'] ?? 0);
+        $callId       = isset($payload['call_id']) && $payload['call_id'] !== '' ? (int) $payload['call_id'] : null;
+        $callDate     = (string) ($payload['call_date'] ?? '');
+        $startTime    = (string) ($payload['start_time'] ?? '');
+        $endTime      = (string) ($payload['end_time'] ?? '');
+        $episodeTheme = trim((string) ($payload['episode_theme'] ?? ''));
+
+        if ($programId <= 0 || $callDate === '' || $startTime === '' || $endTime === '') {
+            mh_json_response('error', 'Faltan campos obligatorios (program_id, call_date, start_time, end_time).', [], 422);
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $callDate)) {
+            mh_json_response('error', 'Formato de call_date invalido (YYYY-MM-DD).', [], 422);
+        }
+        if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $startTime) || !preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $endTime)) {
+            mh_json_response('error', 'Formato de hora invalido (HH:MM).', [], 422);
+        }
+        if ($startTime >= $endTime) {
+            mh_json_response('error', 'La hora de inicio debe ser anterior a la hora de fin.', [], 422);
+        }
+
+        $programStmt = $pdo->prepare(
+            'SELECT id, name, conductor_user_id FROM programs WHERE id = :id AND is_native_show = 1'
+        );
+        $programStmt->execute(['id' => $programId]);
+        $program = $programStmt->fetch();
+
+        if (!$program || (int) $program['conductor_user_id'] !== (int) $currentUser['user_id']) {
+            mh_json_response('error', 'No eres el conductor asignado a este show.', [], 403);
+        }
+
+        $location = 'Estudio 5 de Mayo';
+
+        // Mismo algoritmo de inmunidad ante sobre-reservas que create_call,
+        // excluyendo el propio llamado cuando se trata de una edicion.
+        $collisionSql = "SELECT COUNT(*) AS conflicts FROM calls
+             WHERE location = :location AND call_date = :call_date AND status != 'Cancelado'
+               AND start_time < :end_time AND end_time > :start_time";
+        $collisionParams = [
+            'location'   => $location,
+            'call_date'  => $callDate,
+            'start_time' => $startTime,
+            'end_time'   => $endTime,
+        ];
+        if ($callId !== null) {
+            $collisionSql .= ' AND id != :call_id';
+            $collisionParams['call_id'] = $callId;
+        }
+        $collisionStmt = $pdo->prepare($collisionSql);
+        $collisionStmt->execute($collisionParams);
+
+        if ((int) $collisionStmt->fetch()['conflicts'] > 0) {
+            mh_json_response('error', 'Colision de horario detectada: ya existe un llamado en esa locacion, fecha y horario.', [], 409);
+        }
+
+        if ($callId !== null) {
+            $ownStmt = $pdo->prepare('SELECT id FROM calls WHERE id = :id AND program_id = :program_id');
+            $ownStmt->execute(['id' => $callId, 'program_id' => $programId]);
+
+            if (!$ownStmt->fetch()) {
+                mh_json_response('error', 'El llamado indicado no pertenece a este show.', [], 422);
+            }
+
+            $stmt = $pdo->prepare(
+                'UPDATE calls SET call_date = :call_date, start_time = :start_time, end_time = :end_time,
+                        episode_theme = :episode_theme
+                 WHERE id = :id'
+            );
+            $stmt->execute([
+                'call_date'     => $callDate,
+                'start_time'    => $startTime,
+                'end_time'      => $endTime,
+                'episode_theme' => $episodeTheme !== '' ? $episodeTheme : null,
+                'id'            => $callId,
+            ]);
+
+            mh_json_response('success', 'Programa actualizado correctamente.', ['id' => $callId]);
+        }
+
+        $title = $program['name'] . ' — ' . $callDate;
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO calls (program_id, title, location, call_date, start_time, end_time, episode_theme, created_by)
+             VALUES (:program_id, :title, :location, :call_date, :start_time, :end_time, :episode_theme, :created_by)'
+        );
+        $stmt->execute([
+            'program_id'     => $programId,
+            'title'          => $title,
+            'location'       => $location,
+            'call_date'      => $callDate,
+            'start_time'     => $startTime,
+            'end_time'       => $endTime,
+            'episode_theme'  => $episodeTheme !== '' ? $episodeTheme : null,
+            'created_by'     => $currentUser['user_id'],
+        ]);
+
+        mh_json_response('success', 'Programa creado correctamente.', ['id' => (int) $pdo->lastInsertId()], 201);
     }
 
     mh_json_response('error', 'Accion o metodo no soportado.', [], 405);

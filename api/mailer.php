@@ -18,18 +18,23 @@
  * flujo principal de la aplicacion (las notificaciones son "best effort").
  */
 
+require_once __DIR__ . '/response.php';
+require_once __DIR__ . '/smtp_mailer.php';
+
 /**
  * Lee una clave del .env raiz con valor por defecto. No expone el archivo
  * completo: solo la clave solicitada.
+ *
+ * Delega en Database::loadEnv() (parser propio linea-por-linea, ver
+ * config/Database.php) en lugar de parse_ini_file() -- ese parser nativo
+ * rompe (devuelve false para TODO el archivo) cuando alguna variable real
+ * de GreenGeeks contiene "$", ";" u otros caracteres especiales de
+ * sintaxis INI (mismo fix ya aplicado a api/response.php::mh_app_env()
+ * en Fase 4.3; mh_mail_env() se habia quedado con la version fragil).
  */
 function mh_mail_env(string $key, string $default = ''): string
 {
-    static $env = null;
-
-    if ($env === null) {
-        $envFile = __DIR__ . '/../.env';
-        $env     = file_exists($envFile) ? (parse_ini_file($envFile) ?: []) : [];
-    }
+    $env = Database::loadEnv();
 
     $value = $env[$key] ?? '';
 
@@ -110,26 +115,82 @@ HTML;
 }
 
 /**
- * Envia un correo HTML. Devuelve true si mail() reporto exito; en caso
+ * Envia un correo HTML. Devuelve true si el envio reporto exito; en caso
  * contrario registra el intento en mail.log y devuelve false sin lanzar
  * excepciones (envio best-effort, no debe romper el flujo principal).
+ *
+ * TRANSPORTE (Fase 5.3): intenta primero SMTP autenticado real
+ * (api/smtp_mailer.php::mh_smtp_send()) si `.env` tiene MAIL_HOST +
+ * MAIL_USER + MAIL_PASS completos. Si falta cualquiera de los 3, degrada
+ * automaticamente al mail() nativo de PHP (comportamiento previo, sin
+ * romper entornos donde el SMTP aun no esta configurado).
+ *
+ * INTERCEPTOR TRANSITORIO DE PRUEBAS (Fase 5.1): si `.env` define
+ * MH_MAIL_TEST_RECIPIENT, TODO correo transaccional (sin importar el
+ * destinatario original) se redirige a esa direccion (con copia opcional
+ * a MH_MAIL_TEST_CC), para auditar el diseno HTML responsive de las
+ * plantillas antes de habilitar el envio real a usuarios finales. El
+ * destinatario original se preserva en el asunto y en un aviso dentro
+ * del cuerpo del correo, para no perder trazabilidad durante la prueba.
+ * Desactivar: borrar/vaciar MH_MAIL_TEST_RECIPIENT en `.env`.
  */
 function mh_send_mail(string $to, string $subject, string $htmlBody): bool
 {
     $fromName    = mh_mail_env('MAIL_FROM_NAME', 'Media HUB');
     $fromAddress = mh_mail_env('MAIL_FROM_ADDRESS', 'no-reply@mediahubbcs.com');
 
+    $testRecipient = mh_mail_env('MH_MAIL_TEST_RECIPIENT', '');
+    $testCc        = mh_mail_env('MH_MAIL_TEST_CC', '');
+
+    $actualTo = $to;
+    $ccList   = [];
+
+    if ($testRecipient !== '') {
+        $actualTo = $testRecipient;
+        $subject  = '[MODO PRUEBA | destinatario real: ' . $to . '] ' . $subject;
+
+        $noticeHtml = '<div style="background:#fff3cd; border:1px solid #ffe08a; color:#7a5b00; '
+            . 'padding:10px 14px; margin-bottom:16px; border-radius:6px; font-family:Arial, sans-serif; font-size:13px;">'
+            . 'MODO PRUEBA TRANSITORIO -- este correo iba dirigido originalmente a <strong>'
+            . htmlspecialchars($to, ENT_QUOTES, 'UTF-8') . '</strong>.</div>';
+        $htmlBody = $noticeHtml . $htmlBody;
+
+        if ($testCc !== '') {
+            $ccList[] = $testCc;
+        }
+    }
+
+    if (mh_smtp_configured()) {
+        $sent = mh_smtp_send($actualTo, $subject, $htmlBody, $ccList);
+        if ($sent) {
+            return true;
+        }
+        // SMTP configurado pero fallo (credenciales/host/puerto incorrectos):
+        // mh_smtp_send() ya registro el motivo real en error_log. Se intenta
+        // mail() como ultimo recurso antes de dar el envio por perdido.
+    }
+
+    // Mismas cabeceras de alineacion SPF/DMARC que mh_smtp_send() (Fase 5.5)
+    // -- ver comentario en api/smtp_mailer.php para el detalle completo.
     $headers   = [];
     $headers[] = 'MIME-Version: 1.0';
     $headers[] = 'Content-Type: text/html; charset=UTF-8';
     $headers[] = sprintf('From: %s <%s>', $fromName, $fromAddress);
+    $headers[] = 'Reply-To: ' . $fromAddress;
+    $headers[] = 'Return-Path: ' . $fromAddress;
+    $headers[] = 'X-Mailer: PHP/MediaHUB-Core';
+    $headers[] = 'Message-ID: <' . uniqid('mh', true) . '@mediahub.tecnidepot.com>';
+    if ($ccList !== []) {
+        $headers[] = 'Cc: ' . implode(', ', $ccList);
+    }
 
-    $sent = @mail($to, $subject, $htmlBody, implode("\r\n", $headers));
+    $sent = @mail($actualTo, $subject, $htmlBody, implode("\r\n", $headers));
 
     if (!$sent) {
         $line = sprintf(
-            "[%s] FALLO ENVIO a=%s subject=%s%s",
+            "[%s] FALLO ENVIO a=%s (original=%s) subject=%s%s",
             date('Y-m-d H:i:s'),
+            $actualTo,
             $to,
             $subject,
             PHP_EOL
@@ -149,7 +210,7 @@ function mh_mail_welcome(string $fullName, string $userCode, string $email, stri
     $userCode = htmlspecialchars($userCode, ENT_QUOTES, 'UTF-8');
     $email    = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
     $password = htmlspecialchars($tempPassword, ENT_QUOTES, 'UTF-8');
-    $appUrl   = htmlspecialchars(mh_mail_env('APP_URL', ''), ENT_QUOTES, 'UTF-8');
+    $appUrl   = htmlspecialchars(mh_detect_base_url(), ENT_QUOTES, 'UTF-8');
 
     $body = <<<HTML
 <h2 style="margin-top:0; color:#022D53;">Bienvenido(a) a Media HUB, {$fullName}</h2>
@@ -255,4 +316,97 @@ HTML;
     $body .= '<p style="color:#3c5a6e; font-size:13px;">Este enlace es valido durante <strong>1 hora</strong>. Si no solicitaste este cambio, ignora este mensaje y tu contrasena permanecera sin cambios.</p>';
 
     return ['subject' => 'Media HUB | Recuperacion de contrasena', 'html' => mh_email_layout('Recuperacion de Contrasena', $body)];
+}
+
+/**
+ * Plantilla 5: Invitacion a crear contrasena (Onboarding por correo, Paso 1).
+ * Se dispara al dar de alta un usuario con status='Pendiente'. El enlace
+ * apunta a set_password.php?uid=...&token=... (token_hash en
+ * password_resets con purpose='activation').
+ */
+function mh_mail_account_invite(string $fullName, string $email, string $role, string $activationUrl): array
+{
+    $fullName = htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8');
+    $email    = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
+    $role     = htmlspecialchars($role, ENT_QUOTES, 'UTF-8');
+
+    $body = <<<HTML
+<h2 style="margin-top:0; color:#022D53;">Has sido invitado(a) a Media HUB</h2>
+<p>Hola {$fullName}, el equipo de Media HUB Audiovisual Studio te ha dado de alta dentro de la plataforma con el rol <strong>{$role}</strong>.</p>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="background-color:#f2f7fa; border-radius:8px; margin:16px 0;">
+<tr><td style="font-weight:bold; width:160px;">Tu usuario</td><td>{$email}</td></tr>
+</table>
+<p>Tu correo electronico sera tu identificador de acceso. Para activar tu cuenta, primero debes crear tu contrasena personal:</p>
+HTML;
+
+    $body .= mh_email_button('Crear mi contrasena', $activationUrl);
+    $body .= '<p style="color:#3c5a6e; font-size:13px;">Este enlace es de un solo uso y expira en 7 dias. Si no esperabas esta invitacion, ignora este correo.</p>';
+
+    return [
+        'subject' => 'Media HUB | Invitacion a tu cuenta de acceso',
+        'html'    => mh_email_layout('Invitacion a Media HUB', $body),
+    ];
+}
+
+/**
+ * Plantilla 6: Bienvenida oficial de acceso (Onboarding por correo, Paso 2).
+ * Se dispara automaticamente al completar set_password.php con exito
+ * (status pasa de 'Pendiente' a 'Activo'). El CTA abre la Landing con el
+ * modal de Portal Staff listo para iniciar sesion.
+ */
+function mh_mail_account_activated(string $fullName, string $email = ''): array
+{
+    $fullName = htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8');
+    $email    = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
+    $loginUrl = htmlspecialchars(mh_detect_base_url() . '/index.php#login', ENT_QUOTES, 'UTF-8');
+
+    $body = <<<HTML
+<h2 style="margin-top:0; color:#022D53;">Tu cuenta esta activa, {$fullName}</h2>
+<p>Tu contrasena fue creada exitosamente y tu cuenta de Media HUB ya esta lista para operar. Bienvenido(a) oficialmente al equipo.</p>
+HTML;
+
+    if ($email !== '') {
+        $body .= <<<HTML
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="background-color:#f2f7fa; border-radius:8px; margin:16px 0;">
+<tr><td style="font-weight:bold; width:160px;">Tu identificador de acceso</td><td>{$email}</td></tr>
+</table>
+<p style="color:#3c5a6e; font-size:13px;">Recuerda: para ingresar al Portal Staff, tu usuario en el modal de acceso sera siempre tu correo electronico ({$email}), el mismo con el que fuiste dado de alta.</p>
+HTML;
+    }
+
+    $body .= mh_email_button('Iniciar sesion en Media HUB', $loginUrl);
+    $body .= '<p style="color:#3c5a6e; font-size:13px;">Si tienes cualquier duda sobre tu acceso, contacta a un Administrador del sistema.</p>';
+
+    return [
+        'subject' => 'Media HUB | Tu cuenta ha sido activada',
+        'html'    => mh_email_layout('Cuenta Activada', $body),
+    ];
+}
+
+/**
+ * Plantilla de Soporte (Fase 5.9): reporte/sugerencia enviado desde el
+ * modulo "Soporte" del Dashboard (cualquier rol autenticado, actualmente
+ * consumido por el Conductor). Va dirigido a SUPPORT_EMAIL/.env (o al
+ * remitente por defecto si esa clave no existe).
+ */
+function mh_mail_support_request(string $fullName, string $email, string $role, string $message): array
+{
+    $fullNameSafe = htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8');
+    $emailSafe    = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
+    $roleSafe     = htmlspecialchars($role, ENT_QUOTES, 'UTF-8');
+    $messageSafe  = nl2br(htmlspecialchars($message, ENT_QUOTES, 'UTF-8'));
+
+    $body = <<<HTML
+<h2 style="margin-top:0; color:#022D53;">Nuevo mensaje de Soporte</h2>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="background-color:#f2f7fa; border-radius:8px; margin:16px 0;">
+<tr><td style="font-weight:bold; width:160px;">De</td><td>{$fullNameSafe} ({$roleSafe})</td></tr>
+<tr><td style="font-weight:bold;">Correo</td><td>{$emailSafe}</td></tr>
+</table>
+<p style="color:#3c5a6e;">{$messageSafe}</p>
+HTML;
+
+    return [
+        'subject' => 'Media HUB | Soporte: mensaje de ' . $fullName,
+        'html'    => mh_email_layout('Nuevo mensaje de Soporte', $body),
+    ];
 }

@@ -1,11 +1,36 @@
 # Credenciales y secretos
 .env
+.env.*
+!.env.example
 
-# Bitacora de seguridad (Troll Mode)
+# Bitacoras (Troll Mode, correo, cualquier .log futuro)
+*.log
 seguridad.log
+mail.log
+
+# Volcados de base de datos (backups/exports de desarrollo -- las
+# migraciones versionadas de database/*_fase*.sql SI se versionan a
+# proposito, ver Regla Espejo en CLAUDE.md; esto solo bloquea dumps
+# completos/backups que no son scripts de migracion revisados).
+database/*.dump.sql
+database/backup_*.sql
+database/*_dump.sql
 
 # Scripts de diagnostico / instalacion - SOLO USO LOCAL, NUNCA A PRODUCCION
 genesis.php
 setup_superadmin.php
 db_test.php
 test_hub_connection.php
+api/debug_db.php
+api/test_integration.php
+api/test_smtp_delivery.php
+
+# Uploads de usuario (contenido dinamico, no versionado)
+/uploads/*
+!/uploads/.gitkeep
+
+# Sistemas operativos / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

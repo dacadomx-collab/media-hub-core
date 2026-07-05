@@ -1,597 +1,388 @@
-# 03_CONTRATOS_API_Y_RUTAS — {{PROJECT_NAME}}
-## Contratos JSON Inmutables, Payloads y Reglas de Auth por Endpoint
-**Versión:** 1.0 | **Fecha de consolidación:** 2026-06-11 | **Clasificación:** Ley Suprema — Pilar Canónico
-**Fuentes consolidadas:** 03_CONTRATOS_API_Y_LOGICA.md, 03_API_CONTRACTS_AND_ROUTING.md
+# 03 · CONTRATOS API Y RUTAS — MEDIA HUB
 
-> Estos contratos son inmutables (Mandamiento 5). Ningún endpoint altera sus propiedades JSON sin actualizar este documento. Claude DEBE rechazar cargas inválidas con HTTP 422 antes de tocar
-> la DB. No reinventar respuestas — si no está aquí documentado, no se implementa sin aprobación.
+> **Version:** 2.0 (Reescritura total — reemplaza contenido generico no relacionado con el proyecto)
+> **Clasificacion:** Ley Suprema — Pilar Canonico — Contratos JSON Inmutables
+> **Fuente de verdad:** codigo real en `api/*.php` (auditado linea por linea al redactar este documento)
+
+> Estos contratos son inmutables (Mandamiento 5, ver `01_LEY_Y_PROTOCOLOS_DE_VUELO.md`). Ningun endpoint altera sus propiedades JSON sin actualizar este documento. Todo endpoint de mutacion rechaza cargas invalidas con `422` antes de tocar la base de datos.
 
 ---
 
-## 📡 PROTOCOLO BASE DE INTEGRACIÓN
+## 0. NOTA DE CONSOLIDACION
 
-- **Intercambio:** JSON UTF-8 exclusivamente. Prohibido form-data en endpoints de IA.
-- **Content-Type obligatorio (POST):** `application/json` — el servidor rechaza con `415` si difiere.
-- **CORS Security:** Estricto (mismo origen) en `/SECURITY`. Por token en `/CORE` y `/PARTNERS`.
-- **Estructura Standard de Respuesta:**
+La version anterior de este archivo describia contratos de un producto SaaS ajeno a Media HUB (Scanner de dominios, Synaptic Core, DCD Engine/Extractor/Analyzer, tokens de partners). Ese contenido no correspondia a ningun archivo real de este repositorio y fue **descartado por completo**. Este documento reemplaza esa version con los contratos reales de `api/*.php`, verificados contra el codigo fuente.
+
+---
+
+## 📡 PROTOCOLO BASE DE INTEGRACION
+
+- **Intercambio:** JSON UTF-8 en el cuerpo de la peticion (`php://input`, decodificado con `mh_read_json_body()`). Los filtros de listados (`GET`) via query string.
+- **Estructura estandar de respuesta** (`api/response.php` → `mh_json_response()`):
   ```json
   { "status": "success|error", "message": "string", "data": { ... } }
   ```
-- **Enforcement:** Claude crea validadores PHP estrictos por endpoint. Sin validación = sin merge.
-- **Librería de Snippets:** Antes de crear un componente, consultar `/knowledge/` por uno existente.
-- **Regla de Oro — Arquitectura de Endpoints:** Todo endpoint PHP consumible por el frontend **vive en `/api/`**. Las clases internas (PDO, Auth, motores de IA) viven en `/CORE/src/` y se consumen con `require_once`. Ningún archivo de `/CORE/src/` ni `CORE/.env` es accesible por HTTP (bloqueado por `.htaccess`). Sin excepción.
+- **Sesion:** `session_start()` en cada endpoint. `mh_require_session()` responde `401` JSON (sin redirect) si `$_SESSION['user_id']` no existe — estos endpoints se consumen via `fetch()` desde `dashboard/index.php`, nunca por navegacion directa.
+- **CSRF:** `mh_require_csrf($payload)` valida `payload.csrf_token` o el header `X-CSRF-Token` contra `$_SESSION['csrf_token']` con `hash_equals()`. Obligatorio en todo `POST`/`PUT`.
+- **Troll Mode:** `mh_guard_request($payload, 'contexto')` se ejecuta antes de cualquier `INSERT`/`UPDATE`, escaneando el payload contra `MH_ATTACK_PATTERNS` (ver `04_ARQUITECTURA_Y_BLINDAJE.md` §4).
+- **Rutas:** todo endpoint vive en `api/` (un nivel bajo la raiz) y se consume como `api/<archivo>.php?action=<accion>`.
 
 ---
 
-## 🛠️ CONTRATO 1 — The Scanner
+## 🛠️ CONTRATO 1 — Agenda y Control de Colisiones (`api/agenda.php`)
 
-**Ruta:** `SECURITY/GEM/api_scan.php`
-**Método:** `POST`
-**CORS:** Estricto — solo mismo origen o `localhost/127.0.0.1`
-**Auth:** Sin token (el CORS es la primera línea de defensa)
+**Auth:** Sesion requerida. `create_call`, `assign_staff`, `update_status` → roles `Super_admin`/`Admin`/`Lider_Proyecto`. `verify_advance` → solo `Super_admin`/`Admin`. `list` → cualquier rol autenticado, **con alcance restringido para `Conductor`** (ver abajo).
 
-### Payload (Frontend → Backend):
-```json
-{
-  "dominio": "string — REQUERIDO. Ej: ejemplo.com (sin protocolo)",
-  "phase":   "string — OPCIONAL. Default: all",
-  "check":   "string — SOLO si phase=check"
-}
-```
+### GET `?action=list`
+Filtros opcionales en query string: `from`, `to` (fecha `YYYY-MM-DD`), `location`, `program_id`.
 
-**Valores válidos para `phase`:**
-| Valor | Módulo que activa |
-| :--- | :--- |
-| `all` | Ejecuta todos los módulos en secuencia (default) |
-| `recon` | OSINT: WHOIS + DNS + Blacklist |
-| `military` | Auditoría de headers HTTP completa |
-| `military_headers` | Solo cabeceras de seguridad |
-| `military_ssl` | Solo certificado SSL/TLS |
-| `wp_audit` | Detección y auditoría WordPress |
-| `port_scan` | Radar de puertos críticos |
-| `check` | Checklist Oro (requiere campo `check`) |
+**Alcance por rol (Fase 5.5):** si `currentUser.role === 'Conductor'`, `program_id` es **obligatorio** y debe ser un show nativo cuyo `conductor_user_id` sea el usuario en sesión (`403` si no) — la respuesta **omite** `advance_required_pct`, `advance_paid`, `total_amount` y `notes` para ese rol. El `JOIN` con `clients` es `LEFT` (no `INNER`): los llamados de shows nativos (`programs.client_id NULL`) ya no se ocultan — antes de Fase 5.5 eran invisibles para cualquier consulta.
 
-**Valores válidos para `check`** (solo cuando `phase=check`):
-| Valor | Verificación |
-| :--- | :--- |
-| `env` | Exposición de archivo `.env` público |
-| `htaccess` | Blindaje `.htaccess` activo |
-| `indexes` | Directory listing desactivado |
-| `ipintel` | Inteligencia de IP (geolocalización, VPN, reputación) |
-
-### Response (Backend → Frontend):
+**Response 200:**
 ```json
 {
   "status": "success",
-  "domain": "string — dominio normalizado y validado",
+  "message": "Agenda cargada.",
   "data": {
-    "phase": "string",
-    "recon":            { "whois": {}, "dns": {}, "blacklist": {}, "lines": [] },
-    "military":         { "lines": [] },
-    "military_headers": { "lines": [] },
-    "military_ssl":     { "lines": [] },
-    "wp_audit":         { "lines": [] },
-    "port_scan":        { "lines": [] },
-    "checklist":        { "lines": [] }
+    "calls": [
+      {
+        "id": 1, "title": "string", "location": "Estudio 5 de Mayo",
+        "call_date": "YYYY-MM-DD", "start_time": "HH:MM:SS", "end_time": "HH:MM:SS",
+        "status": "Pendiente|Confirmado|Cancelado|Completado",
+        "advance_required_pct": 50.00, "advance_paid": 0,
+        "total_amount": 0.00, "notes": "string|null",
+        "program_id": 1, "program_name": "string",
+        "client_name": "string", "client_company": "string",
+        "assignments": [{ "call_id": 1, "user_id": 1, "full_name": "string", "role": "string", "task_description": "string|null", "status": "string" }]
+      }
+    ]
   }
 }
 ```
 
-### Reglas de Piedra — The Scanner:
-1. **Sanitización obligatoria:** El dominio se normaliza eliminando protocolo, path, query y puerto. Regex estricta FQDN.
-2. **Solo hostnames válidos:** IPs directas rechazadas. Longitud máxima 253 caracteres.
-3. **Método POST exclusivo:** GET = `405 Method Not Allowed`.
-4. **Content-Type estricto:** Diferente a `application/json` = `415 Unsupported Media Type`.
-5. **Sin datos internos expuestos:** El scanner audita dominios externos. Nunca apunta a la DB interna.
+### POST `?action=create_call`
+**Payload:** `{ "program_id": int, "title": "string", "location": "enum MH_VALID_LOCATIONS", "call_date": "YYYY-MM-DD", "start_time": "HH:MM", "end_time": "HH:MM", "total_amount": number|null, "notes": "string|null" }`
+
+**Reglas de Piedra:**
+1. Rechaza si faltan `program_id`/`title`/`call_date`/`start_time`/`end_time` (`422`).
+2. `location` debe estar en `MH_VALID_LOCATIONS` (`Estudio 5 de Mayo`, `Locacion Externa`, `Van Terrestre`, `Embarcacion Maritima`).
+3. **Algoritmo de Inmunidad ante Sobre-Reservas:** antes del `INSERT`, ejecuta la consulta de colision (`location` + `call_date` + solape de `start_time`/`end_time` contra llamados no cancelados). Si hay conflicto → `409`.
+4. Éxito → `201` con `{ "id": int }`.
+
+### POST `?action=assign_staff`
+**Payload:** `{ "call_id": int, "user_id": int, "task_description": "string|null" }`
+
+**Reglas de Piedra:**
+1. `404` si el llamado no existe. `422` si `status = 'Cancelado'`.
+2. **Compuerta financiera obligatoria:** si `calls.advance_paid != 1`, responde `422` con el monto exacto calculado (`total_amount * advance_required_pct / 100`): *"No se puede asignar personal: el anticipo del 50% ($X MXN) aun no ha sido verificado para este llamado."*
+3. `409` si el usuario ya está asignado a ese llamado (constraint unico `call_id, user_id`).
+
+### PUT `?action=update_status`
+**Payload:** `{ "call_id": int, "status": "enum MH_VALID_CALL_STATUS" }`
+
+**Reglas de Piedra:** pasar a `status = 'Confirmado'` exige `advance_paid = 1` (`422` si no). `404` si el llamado no existe.
+
+### PUT `?action=verify_advance`
+**Payload:** `{ "call_id": int, "advance_paid": bool }`
+
+**Reglas de Piedra:** al pasar `advance_paid` a `true`, dispara automáticamente `mh_mail_call_confirmed()` (Contrato 5) al `email` del cliente del programa, best-effort (no bloquea la respuesta si el correo falla).
 
 ---
 
-## 🛠️ CONTRATO 2 — DCD Engine (Motor IA SaaS)
+## 🛠️ CONTRATO 2 — Clientes Jornal (`api/clients.php`)
 
-**Ruta:** `CORE/ChatBot AI-generated/api/v1/dcd_engine.php`
-**Método:** `POST`
-**Auth:** Token de socio validado contra `clientes_saas.token` + `estatus = 'activo'`
-**Modelo IA:** `gpt-4o-mini`
+**Auth:** `create`/`update` → `Super_admin`/`Admin`/`Lider_Proyecto`. `deactivate`/`activate` → solo `Super_admin`/`Admin`.
 
-### Payload (Frontend del Socio → Engine):
-```json
-{
-  "message": "string — REQUERIDO. Mensaje del usuario final",
-  "token":   "string — REQUERIDO. Token único del socio DCD",
-  "history": "array  — OPCIONAL. Historial previo [{role, content}]"
-}
-```
+| Accion | Metodo | Descripcion |
+| :--- | :--- | :--- |
+| `list` | GET | Listado de clientes con conteo de programas asociados |
+| `create` | POST | Alta de cliente (`full_name`, `email`, `phone`, `company`) |
+| `update` | PUT | Edicion de datos de contacto |
+| `deactivate` | POST | Baja lógica → `clients.is_active = 0` |
+| `activate` | POST | Reactivación → `clients.is_active = 1` |
 
-### Response (Engine → Frontend del Socio):
-```json
-{
-  "success":  true,
-  "response": "string — respuesta generada por OpenAI"
-}
-```
-
-### Response de Error:
-```json
-{ "success": false, "response": "DCD_LABS: Mensaje de error genérico." }
-```
-
-### Reglas de Piedra — DCD Engine:
-1. **Sin token válido = `403`.** El engine no procesa ninguna petición sin token activo en DB.
-2. **La API Key de OpenAI NUNCA se expone al socio.** Vive exclusivamente en `CORE/ChatBot AI-generated/api/v1/.env` → `DCD_OPENAI_KEY`.
-3. **El Source of Truth del prompt** (instrucciones del chatbot del socio) vive en el servidor DCD. El cliente nunca lo ve.
-4. **Carga de `.env`:** Se usa `getenv()` con fallback de lectura manual del archivo `CORE/ChatBot AI-generated/api/v1/.env`. Sin hardcode.
-5. **Error de método:** `GET` = `403 Metodo no permitido`.
+**Contrato base de respuesta:** `{ status, message, data }` en todas las acciones, códigos `200`/`201`/`404`/`422` según corresponda. Ver `02_CODEX_Y_SCHEMA_MAESTRO.md` §2.4 para el esquema completo de `clients`.
 
 ---
 
-## 🛠️ CONTRATO 3 — DCD Extractor (Extractor NLP de Entidades)
+## 🛠️ CONTRATO 3 — Programas Recurrentes y Shows Nativos (`api/programs.php`)
 
-**Ruta:** `CORE/ChatBot AI-generated/api/v1/dcd_extractor.php`
-**Método:** `POST`
-**Auth:** Campo `token` en body igual a `API_TOKEN` (definido en `.env`)
-**Modelo IA:** `gpt-4o-mini` con `response_format: json_object`
+**Auth:** `list`/`create`/`update`/`deactivate`/`activate` → sesión de staff (`Super_admin`/`Admin`/`Lider_Proyecto`). `public_catalog` → **público, sin sesión** (ver nota abajo).
 
-### Payload:
+| Accion | Metodo | Auth | Descripcion |
+| :--- | :--- | :--- | :--- |
+| `public_catalog` | GET | **Público** | Catálogo de shows nativos activos (`is_native_show=1 AND is_active=1`) para `index.php` §`#programas`. Solo columnas públicas: `id`, `name`, `catalog_description`, `logo_url`, `public_social_links` |
+| `list` | GET | Staff | Listado interno de programas, filtro opcional `client_id` (no incluye shows nativos por el `INNER JOIN clients` — ver nota) |
+| `create` | POST | Staff | Alta de programa (`client_id`, `name`, `description`) — dispara `mh_mail_new_program()` (Contrato 5) si el cliente tiene `email` |
+| `update` | PUT | Staff | Edición de nombre/descripción/cliente asociado |
+| `deactivate` / `activate` | POST | Staff | Baja/reactivación lógica vía `programs.is_active` |
+
+> **Nota Fase 5:** `public_catalog` es la **única** vía pública para leer `programs`. Se agregó porque `list` requiere sesión y hace `INNER JOIN clients` (excluye filas con `client_id = NULL`, es decir, excluye shows nativos) — `programs.php` gestiona ambos tipos de fila (Contrato 2/§2.5 del Codex) pero cada acción sirve a una audiencia distinta.
+
+### GET `?action=public_catalog` — Response 200
 ```json
-{
-  "token":   "string — REQUERIDO. Token de seguridad del puente",
-  "history": "array  — REQUERIDO. Historial del chat a analizar [{role, content}]"
-}
+{ "status": "success", "data": { "programs": [
+  { "id": 1, "name": "string", "catalog_description": "string|null", "logo_url": "string|null", "public_social_links": "string|null (JSON-encoded)" }
+] } }
 ```
 
-### Response (JSON limpio de OpenAI):
-```json
-{
-  "nombre":   "string — nombre real extraído del chat",
-  "telefono": "string — teléfono extraído o 'No proporcionado'",
-  "resumen":  "string — resumen ejecutivo de máx 40 palabras del prospecto"
-}
+### GET `?action=list_native` — Fase 5.2 (Staff: `Super_admin`/`Admin`)
+Listado completo de shows nativos con datos del Conductor (`conductor_name`, `conductor_email`, `conductor_status`) vía `LEFT JOIN users`.
+
+### POST `?action=create_native` — Fase 5.2/5.3 (Staff: `Super_admin`/`Admin`)
+**⚠️ Único endpoint de este pilar que NO usa JSON** — `multipart/form-data` (requiere subir archivo). Payload de formulario:
+
+```
+name (requerido), catalog_description,
+public_social_links_json (JSON string de [{platform,url}, ...] — Hito 3 Fase 5.3, arreglo dinamico, 0..N filas),
+schedule_days[] (subset de Lunes..Domingo — OJO: el checkbox HTML debe llamarse "schedule_days[]", no "schedule_days"),
+schedule_start_time, schedule_end_time,
+logo (archivo, opcional), csrf_token,
+conductor_full_name / conductor_email (ambos o ninguno — Conductor Inline, Fase 5.3: SIN campo de ID manual, el email es el identificador)
 ```
 
-### Reglas de Piedra — DCD Extractor:
-1. **Sanitización de strings:** Todo input pasa por `strip_tags()` y `mb_substr($str, 0, 200)`.
-2. **Retries controlados:** Máximo `MAX_RETRIES = 2` ante fallo de la API de OpenAI.
-3. **Respuesta siempre JSON:** `Content-Type: application/json` sin excepción.
-4. **Si falta la API Key:** Responde `500` con `{"error": "Internal Server Error: AI Key missing"}`. Sin revelar detalles.
-5. **CORS abierto** (`Access-Control-Allow-Origin: *`) — La seguridad real es el token en el body.
+**Reglas de Piedra:**
+1. Logo: validado por **MIME real** (`finfo` con fallback a `mime_content_type()`, no la extensión declarada), máx. 5 MB, whitelist PNG/JPEG/WEBP, renombrado por hash SHA-256 antes de persistir en `/uploads/` (nunca el nombre original del cliente).
+2. `production_schedule` se arma como JSON (`{days, start_time, end_time}`) — `null` si no se envía nada.
+3. `public_social_links` (columna JSON real) recibe `json_encode()` del arreglo `[{platform,url}]` ya parseado y validado (`FILTER_VALIDATE_URL` por cada `url` no vacía) — nunca el string crudo del formulario.
+4. Conductor Inline (Fase 5.3 — Identidad Email-Only): si se llena, reutiliza `mh_provision_pending_user()` pasando el **email como `user_code`** (mismo patrón que `api/users.php?action=create`, ver `api/user_provisioning.php`) **dentro de la misma transacción** que el `INSERT` del show — si falla cualquiera de los dos, ambos se revierten y el logo ya subido se borra (`unlink`).
+5. La Plantilla 1 al Conductor se despacha **después** del commit (best-effort, nunca dentro de la transacción).
+6. **Puente forense (Fase 5.3):** el catch externo es `Throwable` (no solo `PDOException`) — con `?debug_token=` válido revela `get_class($e)` + mensaje + archivo:línea; sin token, degrada a 500 genérico. Mismo patrón que `api/login.php`.
+
+### GET `?action=my_native_show` — Fase 5.2 (rol `Conductor`)
+Devuelve únicamente los shows nativos donde `conductor_user_id = currentUser.user_id`. Ningún otro rol puede leer esta acción.
 
 ---
 
-## 🛠️ CONTRATO 4 — DCD Analyzer (Analizador Comercial de Leads)
+## 🛠️ CONTRATO 4 — Checklist Operativo (`api/checklist.php`)
 
-**Ruta:** `CORE/ChatBot AI-generated/api/v1/dcd_analyzer.php`
-**Método:** `POST`
-**Auth:** Token validado contra tabla `clientes_saas` en BD [PROVEEDOR_HOSTING]
-**Modelo IA:** `gpt-4o-mini` con `response_format: json_object`
+**Auth:** Sesión requerida. Acceso: `Super_admin`/`Admin`/`Lider_Proyecto` o staff asignado al llamado (`call_assignments`).
 
-### Payload:
-```json
-{
-  "token":   "string — REQUERIDO. Token único del socio",
-  "history": "array  — REQUERIDO. Array de mensajes [{role: string, content: string}]"
-}
-```
+### GET `?action=get&call_id=ID`
+Devuelve el checklist completo de 3 fases (Antes/Durante/Después) con el progreso registrado en `call_checklist_progress` para ese llamado.
 
-### Response (el JSON de OpenAI pasado directamente al cliente):
-```json
-{
-  "nombre":   "string",
-  "telefono": "string",
-  "resumen":  "string — máx 40 palabras sobre lo que necesita el prospecto"
-}
-```
+### POST `?action=toggle`
+**Payload:** `{ "call_id": int, "template_id": int }` (o `item_key` equivalente, ver `08_CHECKLIST_MAESTRO_BACKEND.md` §3 para el catálogo de `item_key` por fase).
 
-### Reglas de Piedra — DCD Analyzer:
-1. **Sin token o sin history = `400 Bad Request`.**
-2. **Token inválido o socio inactivo = `403 Forbidden`.**
-3. **Contadores obligatorios por petición exitosa:**
-   - `total_peticiones = total_peticiones + 1`
-   - `total_tokens_ia = total_tokens_ia + tokens_used`
-   - `fecha_ultima_peticion = NOW()`
-4. **Fallo silencioso en UPDATE de contadores:** Si el UPDATE falla, no se detiene la respuesta. El error se registra en `error_log`. El cliente nunca sabe de fallos internos de DB.
-5. **Validación de JSON de OpenAI:** Antes de responder al cliente, verificar `json_last_error() === JSON_ERROR_NONE`. Si falla, responder `500` con mensaje genérico.
+**Reglas de Piedra:** cada marcado registra `checked_by` (usuario de sesión) y `checked_at` (`NOW()`) — es la firma digital del progreso operativo. Clave única `(call_id, template_id)` evita duplicados.
 
 ---
 
-## 🛠️ CONTRATO 5 — Synaptic Core (Prompts Maestros)
+## 🛠️ CONTRATO 5 — Inventario y Flota (`api/inventory.php`)
 
-**Ruta:** `api/admin/synaptic_core.php` v2.1
-**Auth:** Cookie `axon_token` → `usuarios.token_acceso`, `estatus='activo'` y `rol = super_admin`. Sin token = 401.
-**Formato:** JSON UTF-8. Para `POST`, `PUT` y `POST ?action=test`, `Content-Type: application/json`.
-**Tabla BD:** `synaptic_prompts` (columnas canónicas: `prompt_sistema`, `prompt_usuario_tpl`)
-**Documentación completa:** `knowledge/06_NUCLEO_COGNITIVO_Y_PROMPTS.md`
+**Auth:** `list`/`log`/`checkout`/`checkin` → sesión requerida (sin rol específico, salvo la regla de asignación abajo). `set_maintenance` → `Super_admin`/`Admin`/`Lider_Proyecto`.
 
-### GET — lista activa
-
-`GET /api/admin/synaptic_core.php`
-
-**200:**
+### GET `?action=list`
 ```json
-{ "status": "success", "data": [{ "id": 1, "context_key": "axon_genesis", "version": 1 }] }
+{ "status": "success", "data": { "inventory_items": [...], "fleet_vehicles": [...] } }
 ```
 
-### GET — historial
+### GET `?action=log`
+Filtros opcionales: `asset_type` (`Inventario`|`Vehiculo`), `asset_id`. Devuelve hasta 200 filas de `checkinout_log` con `staff_name`/`staff_role` unidos desde `users`.
 
-`GET /api/admin/synaptic_core.php?context_key=axon_genesis`
+### POST `?action=checkout`
+**Payload:** `{ "asset_type": "Inventario|Vehiculo", "asset_id": int, "call_id": int|null, "condition_notes": "string|null" }`
 
-**200:** misma estructura que lista activa, ordenada por `version DESC`.
+**Reglas de Piedra:**
+1. `404` si el activo no existe. `409` si `status != 'Disponible'`.
+2. Si `call_id` viene informado y el rol de sesión no es `Super_admin`/`Admin`/`Lider_Proyecto`, exige que el usuario esté en `call_assignments` de ese llamado (`403` si no).
+3. Transacción atómica: `UPDATE` de estatus a `'En Uso'` + `INSERT` append-only en `checkinout_log` (`action = 'Check-Out'`).
 
-### Payload POST / PUT (Frontend → Backend):
+### POST `?action=checkin`
+**Payload:** `{ "asset_type": "Inventario|Vehiculo", "asset_id": int, "call_id": int|null, "condition_notes": "string|null", "damaged": bool }`
+
+**Reglas de Piedra:**
+1. `409` si `status != 'En Uso'`. `422` si `damaged = true` y `condition_notes` viene vacío.
+2. Si `damaged = true` → nuevo estatus `'Mantenimiento'`; si no → `'Disponible'`. Transacción atómica igual que `checkout`.
+
+### POST `?action=set_maintenance`
+**Payload:** `{ "asset_type": "Inventario|Vehiculo", "asset_id": int, "notes": "string|null" }` → fuerza `status = 'Mantenimiento'`.
+
+---
+
+## 🛠️ CONTRATO 6 — Organigrama de Usuarios (`api/users.php`)
+
+| Accion | Metodo | Auth | Descripcion |
+| :--- | :--- | :--- | :--- |
+| `me` | GET | Sesión | Perfil propio + checklist de obligaciones por llamado |
+| `list` | GET | `Super_admin`/`Admin`/`Lider_Proyecto` | Organigrama completo |
+| `create` | POST | `Super_admin`/`Admin` | Alta de staff — **payload: `full_name`, `email`, `role` únicamente (Fase 5.3, Identidad Email-Only: SIN `user_id` manual — internamente `users.user_id = email`)**. Matriz Fase 5: solo `Super_admin` crea `Admin`; `Admin` crea hacia abajo (`Team`, `Conductor`, roles operativos), nunca `Super_admin` (`403` si lo intenta) |
+| `update` | PUT | `Super_admin`/`Admin` | Edición de perfil/rol/estatus |
+| `update_self` | PUT | Sesión (cualquier rol) | Edición de datos propios |
+| `deactivate` | POST | `Super_admin`/`Admin` | Baja lógica → `users.status = 'Suspendido'` |
+
+Roles válidos (`MH_VALID_ROLES`, Fase 5): `Super_admin`, `Admin`, `Lider_Proyecto`, `Staff_Tecnico`, `Lider_Logistica`, `Cliente`, `Team`, `Conductor` (ver `02_CODEX_Y_SCHEMA_MAESTRO.md` §2.1/§2.1.1 — renombre `Administrador → Admin` y jerarquía completa).
+
+**Botón "Resetear Contraseña" (Hito 2, Fase 5.3):** el panel admin dispara `POST api/forgot_password.php` (Contrato 8) a nombre del Administrador, reutilizando la misma sesión PHP (mismo `csrf_token`) — no es una acción nueva de `users.php`.
+
+---
+
+## 🛠️ CONTRATO 7 — Motor de Correos (`api/mailer.php`, `api/smtp_mailer.php`)
+
+No es un endpoint HTTP — es una librería de helpers consumida internamente por `agenda.php`, `programs.php`, `user_provisioning.php` y los flujos de password reset.
+
+**Transporte (Fase 5.3):** `mh_send_mail()` intenta primero SMTP autenticado real (`api/smtp_mailer.php::mh_smtp_send()`, cliente SMTP nativo sin Composer/PHPMailer, `AUTH LOGIN` sobre `ssl://` puerto 465) si `.env` define `MAIL_HOST` + `MAIL_USER` + `MAIL_PASS` completos. Si falta cualquiera, degrada automáticamente a `mail()` nativo de PHP (comportamiento previo). Envío **best-effort** en ambos casos: los fallos se registran en `error_log`/`mail.log` sin interrumpir el flujo de negocio que lo invocó.
+
+> **⚠️ Pendiente de autorización — `MAIL_PASS` vacío:** `.env` tiene `MAIL_HOST`/`MAIL_USER`/`MAIL_PORT`/`MAIL_PROTOCOL` pero **no** la contraseña SMTP real. Hasta que se complete, todo envío sigue cayendo en el `mail()` nativo (sin cambio de comportamiento). El botón "Simular Flujo Onboarding completo" del panel admin ya ejerce las Plantillas 1 y 2 reales de punta a punta en cuanto el SMTP quede completo.
+
+| Función | Disparada por | Contenido |
+| :--- | :--- | :--- |
+| `mh_mail_welcome(fullName, userCode, email, tempPassword)` | Alta de staff (`users.php?action=create`) | Bienvenida + credenciales temporales |
+| `mh_mail_new_program(clientName, programName, programDescription)` | `programs.php?action=create` | Notificación de alta de programa al cliente |
+| `mh_mail_call_confirmed(...)` | `agenda.php?action=verify_advance` (al pasar a `true`) | Fecha confirmada + personal reservado |
+| `mh_mail_password_reset(fullName, resetUrl)` | `forgot_password.php` | Enlace seguro de recuperación |
+
+Paleta institucional de las plantillas HTML: `#022D53` (layout) / `#00BFB2` (acentos), consistente con `00_ADN_Y_FILOSOFIA.md` §5.
+
+---
+
+## 🛠️ CONTRATO 8 — Autenticación y Sesión (`api/login.php`, `logout.php`, `signature.php`, `forgot_password.php`, `reset_password.php`)
+
+Estos endpoints **no** siguen el contrato JSON `{status, message, data}` — son procesadores de formulario (vistas server-rendered) que responden con `header('Location: ...')` relativo. Documentados en detalle en `04_ARQUITECTURA_Y_BLINDAJE.md` §5 (login) y §10.3 (firma digital). Resumen de responsabilidad:
+
+| Archivo | Método | Función |
+| :--- | :--- | :--- |
+| `api/login.php` | POST | CSRF + Troll Mode + `password_verify()` + gate de firmas legales pendientes |
+| `api/logout.php` | GET/POST | Destruye la sesión, redirige a `../index.php` |
+| `api/signature.php` | POST | Procesa la firma de los 4 reglamentos (`user_legal_signatures`) |
+| `api/forgot_password.php` | POST | Genera token HMAC de recuperación, sin revelar si el correo existe |
+| `api/reset_password.php` | POST | Valida token (no usado, no expirado), actualiza `password_hash`, invalida tokens pendientes |
+
+---
+
+## 🛠️ CONTRATO 10 — Guest Onboarding (`api/guest_links.php`, `api/guest_submissions.php`)
+
+**Tablas:** `guest_invite_links`, `guest_submissions` (Fase 5, ver `02_CODEX_Y_SCHEMA_MAESTRO.md` §2.11/§2.12).
+
+### `api/guest_links.php`
+
+**Auth:** Sesión requerida. `create` → roles `Super_admin`, `Admin`, `Conductor` (un `Conductor` solo puede generar enlaces para `programs` donde `conductor_user_id = currentUser.id`).
+
+#### POST `?action=create`
+**Payload:** `{ "program_id": int, "call_id": int|null }` — `call_id` es **opcional** (Fase 5.5): ata el enlace a un llamado específico de la agenda del show, para que `guest_form.php` muestre fecha/hora/locación reales en vez del texto genérico.
+
+**Reglas de Piedra:**
+1. `422` si `program_id` no existe o no es `is_native_show = 1`.
+2. `403` si el rol es `Conductor` y `programs.conductor_user_id != currentUser.id`.
+3. `422` si `call_id` se proporciona pero `calls.program_id != program_id` (el llamado no pertenece a ese show).
+4. Genera `token` con `bin2hex(random_bytes(32))`, `click_count = 0`, `status = 'Activo'`.
+5. Respuesta `201`: `{ "id": int, "token": "string", "public_url": "string" }`.
+
+#### GET `?action=list&program_id=ID`
+Lista los enlaces generados para un show nativo (auditoría del `Conductor`/`Admin`). Incluye `status`, `click_count`, `created_at`, datos del llamado atado (`call_title`, `call_date`, `start_time`, `end_time` vía `LEFT JOIN calls`) y un objeto `completion` calculado (Fase 5.5 — Panel de Auditoría OBS):
+
 ```json
-{
-  "context_key":          "string — REQUERIDO. Solo [a-z0-9_]. Ej: axon_genesis",
-  "nombre":               "string — REQUERIDO",
-  "descripcion":          "string — OPCIONAL",
-  "prompt_sistema":       "string — Al menos uno de los dos prompts es REQUERIDO",
-  "prompt_usuario_tpl":   "string — OPCIONAL. Vacío = caller provee el mensaje",
-  "id_proveedor_default": "integer | null — FK → ai_proveedores.id",
-  "temperatura_override": "float | null — Rango 0.0–2.0",
-  "max_tokens_override":  "integer | null — Rango 1–65535",
-  "variables_requeridas": "array | null — Ej: [\"nombre\",\"geolocalizacion\"]",
-  "temporada_codigo":     "string | null — Ej: VERANO_2026",
-  "etiquetas":            "array | null — Ej: [\"onboarding\",\"genesis\"]"
-}
+{ "completion": { "required_done": 2, "required_total": 2, "optional_done": 3, "optional_total": 5, "has_submission": true } }
 ```
 
-**Ejemplo de payload POST — crear v1:**
-```json
-{
-  "context_key": "axon_genesis",
-  "nombre": "Onboarding Genesis",
-  "descripcion": "string",
-  "prompt_sistema": "string",
-  "prompt_usuario_tpl": "string",
-  "variables_requeridas": ["nombre", "geolocalizacion"],
-  "temporada_codigo": "VERANO_2026",
-  "etiquetas": ["onboarding", "genesis"],
-  "id_proveedor_default": 1,
-  "temperatura_override": 0.85,
-  "max_tokens_override": 2000
-}
-```
+### `api/guest_submissions.php` — Consumo público (sin sesión — el invitado no tiene cuenta)
 
-### Respuesta exitosa POST (201):
-```json
-{ "status": "success", "message": "Prompt creado como v1.", "id": 42, "version": 1, "data": { "id": 42, "version": 1 } }
-```
+**Auth:** Ninguna — validación exclusivamente por posesión del `token` en la URL. Sujeto igualmente a `mh_guard_request()` (Troll Mode) y CSRF de formulario público (token de un solo uso por sesión anónima).
 
-### PUT — publicar nueva versión
+#### GET `?token=...` — Consulta del estado del enlace + datos públicos del show
 
-`PUT /api/admin/synaptic_core.php`
+**Reglas de Piedra:**
+1. `404` si el token no existe. `410 Gone` si `status = 'Expirado'` (o `click_count >= max_clicks`) → el frontend redirige a la Landing pública de Media HUB.
+2. Si `click_count = 0`: incrementa a `1`, devuelve el formulario **vacío** + datos públicos del programa (`name`, `catalog_description`, `logo_url`).
+3. Si `click_count = 1`: incrementa a `2`, devuelve el formulario **precargado** desde `guest_submissions` (si existe) para edición.
+4. Si `click_count` alcanza `2` en este acceso (o ya era `2`): tras servir la respuesta, marca `status = 'Expirado'`, `expired_at = NOW()` — el **siguiente** acceso ya cae en la regla 1.
 
-Mismo payload que POST. Opera en transacción: archiva la versión activa y crea `version+1`.
+#### POST `?token=...` — Guardado parcial (crea o actualiza)
 
-### Respuesta exitosa PUT (200):
-```json
-{ "status": "success", "message": "Versión anterior archivada. Nueva versión v3 activa.", "id": 99, "new_version": 3 }
-```
+**Payload:** `{ "full_name": "string", "title_position": "string", "social_links": object|null, "whatsapp": "string|null", "website": "string|null", "email": "string|null", "invite_message": "string|null" }`
 
-**Ejemplo equivalente (v2):**
-```json
-{ "status": "success", "message": "Versión anterior archivada. Nueva versión v2 activa.", "id": 43, "new_version": 2, "data": { "id": 43, "new_version": 2 } }
-```
+**Reglas de Piedra:**
+1. `410 Gone` si el enlace ya está `Expirado`. `422` si faltan `full_name`/`title_position`.
+2. `INSERT ... ON DUPLICATE KEY UPDATE` sobre `guest_submissions` (clave única `link_id`) — click 1 crea la fila, click 2 la actualiza. Nunca hay más de una fila por enlace.
+3. Respuesta: `{ "status": "success", "message": "Datos guardados.", "data": { "click_count": int, "clicks_restantes": int } }`.
+4. **Nunca** expone `qa_notes` (uso interno) en la respuesta pública.
 
-### Payload POST ?action=test — Playground:
-
-`POST /api/admin/synaptic_core.php?action=test`
-
-```json
-{
-  "prompt_sistema":     "string — puede contener {{variables}}",
-  "prompt_usuario_tpl": "string — puede contener {{variables}} y {{test_message}}",
-  "variables":          "object — { nombre: string, geolocalizacion: string, ... }",
-  "test_message":       "string — REQUERIDO. Mensaje de prueba del usuario"
-}
-```
-
-**Ejemplo de payload Playground:**
-```json
-{
-  "prompt_sistema": "Eres AXON_GENESIS...",
-  "prompt_usuario_tpl": "Partner: {{nombre}}. Mensaje: {{test_message}}",
-  "variables": { "nombre": "Carlos Reyes" },
-  "test_message": "Hola, acabo de ser aprobado."
-}
-```
-
-### Respuesta exitosa Playground (200):
-```json
-{
-  "status": "success",
-  "content": "string — respuesta del LLM",
-  "proveedor_usado": "string",
-  "modelo_usado": "string",
-  "tokens_total": 520,
-  "duracion_ms": 1240,
-  "compiled_system": "string — prompt sistema compilado con variables sustituidas"
-}
-```
-
-**Ejemplo equivalente:**
-```json
-{
-  "status": "success",
-  "content": "Respuesta del modelo",
-  "proveedor_usado": "OpenAI",
-  "modelo_usado": "gpt-4o-mini",
-  "tokens_total": 520,
-  "duracion_ms": 1240,
-  "compiled_system": "Eres AXON_GENESIS..."
-}
-```
-
-### Tabla de errores — Synaptic Core:
+### Estándar de errores — Guest Onboarding
 
 | HTTP | Uso |
 | :--- | :--- |
-| 401 | Sin sesión o token inválido |
-| 403 | Rol distinto de `super_admin` |
-| 409 | `context_key` duplicado en POST |
-| 415 | `Content-Type` distinto de `application/json` |
-| 422 | Payload incompleto o inválido |
-| 500 | Error interno de consulta o persistencia |
-| 502 | Fallo controlado del orquestador IA en Playground |
-
-### Reglas de Piedra — Synaptic Core:
-1. **`context_key` inmutable:** POST crea v1. PUT archiva la versión activa e inserta v+1. El context_key no cambia nunca.
-2. **Binding PDO explícito obligatorio:** Todos los campos nullable usan `PDO::PARAM_NULL` explícito. El driver MySQL nativo rechaza NULL implícito en FK INT con `ATTR_EMULATE_PREPARES=false`.
-3. **Campos JSON en BD:** `variables_requeridas` y `etiquetas` se almacenan como JSON string. Se decodifican a array en la respuesta GET.
-4. **Playground no persiste:** `trackUsage=false` en `AiOrchestrator::dispatch()`. No inserta en `consumo_tokens`.
-5. **DELETE bloqueado por trigger:** `trg_synaptic_prompts_block_delete` — toda versión es registro histórico de auditoría.
-6. **Error logging:** Todo `Throwable` en catch escribe `SQLSTATE + Message + context_key` en `error_log`. El cliente solo recibe el mensaje genérico.
+| `404` | Token inexistente |
+| `410` | Enlace expirado (3er clic consumido) — el único código de este contrato que no es del estándar global de la Sección "Estándar Global" abajo |
+| `422` | Payload inválido o `program_id` no es show nativo |
 
 ---
 
-## 📋 CONTRATO 6 — Logger (Bitácora Segmentada)
+## 🛠️ CONTRATO 9 — Centro de Comando Ejecutivo (`api/finance.php`)
 
-**Clase:** `CORE/src/Logger.php`
-**Invocación:** Estática — `Logger::partner()`, `Logger::cliente()`, `Logger::sistema()`
-**Tablas destino:** `log_actividad_partners`, `log_actividad_clientes`, `log_actividad_sistema`
-**Script SQL:** `backups_y_pruebas/schema_patch_v6_log_segmentation.sql`
+**Auth:** solo `Super_admin`, `Admin` (rol renombrado en Fase 5 — ver nota de reconciliación abajo).
 
-### Routing por actor (obligatorio desde v6+):
-
-```php
-// Partner autenticado
-Logger::partner(idPartner: $id, idUsuario: $uid, accion: 'PROSPECTO_CREADO',
-    entidad: 'prospectos', entidadId: $newId, detalle: [...], ip: $ip);
-
-// Cliente final del bot
-Logger::cliente(idPartner: $partnerId, sessionId: $hash, accion: 'LEAD_CAPTURADO',
-    canal: 'whatsapp', tokensUsados: 120, detalle: [...]);
-
-// Sistema / IA / infraestructura
-Logger::sistema(origen: 'AiOrchestrator', accion: 'AI_DISPATCH', nivel: 'info',
-    idUsuario: $adminId, contextKey: 'axon_genesis', idProveedor: 1,
-    detalle: ['tokens' => 800, 'ms' => 1240], duracionMs: 1240);
-```
-
-### Niveles de severidad para `log_actividad_sistema`:
-
-| Nivel | Uso |
-| :--- | :--- |
-| `info` | Operación normal (AI_DISPATCH, SYNAPTIC_CREATE) |
-| `warning` | Degradación parcial (FAILOVER_ACTIVADO) |
-| `error` | Fallo sin impacto visible al usuario |
-| `critical` | Fallo con impacto confirmado (TODOS_PROVEEDORES_FALLARON) |
-
-### Reglas de Piedra — Logger:
-1. **Fallos de log son silenciosos:** El catch de Logger nunca interrumpe la operación principal. Solo loguea a `error_log`.
-2. **Append-only:** Las 3 tablas tienen triggers `BEFORE UPDATE` y `BEFORE DELETE` con `SIGNAL SQLSTATE '45000'`.
-3. **`$trackUsage = false` en Playground:** No inserta en `consumo_tokens` ni en `log_actividad_sistema`.
-4. **Contexto JSON libre:** El campo `detalle` acepta cualquier array PHP que se serializa como JSON. No requiere esquema fijo.
-
----
-
-## 🛠️ CONTRATO 7 — Verificador de Primer Cliente Cerrado
-
-**Ruta:** `api/partner/verificar_primer_cliente.php`
-**Método:** `GET`
-**Auth:** Cookie `axon_token` → `usuarios.token_acceso` + `rol IN ('partner', 'super_admin')`. Sin token = 401.
-**Mandamiento:** Mandamiento 19 — Blindaje Fiscal por Cartera
-
-### Parámetros opcionales (query string):
-| Parámetro | Tipo | Descripción |
-| :--- | :--- | :--- |
-| `id_usuario` | Integer (opcional) | Solo `super_admin`: verificar otro partner. Omitido = propio perfil. |
-
-### Respuesta exitosa (200):
+### GET `?action=kpis`
 ```json
 {
   "status": "success",
-  "tiene_cliente_cerrado": true
+  "data": {
+    "monthly_revenue": 0.00,
+    "projected_profit": 0.00,
+    "iva_accrued": 0.00,
+    "pending_advances": 0.00,
+    "studio_hours": 0.0,
+    "fleet_maintenance": [{ "id": 1, "name": "string", "type": "string" }],
+    "period": { "start": "YYYY-MM-01", "end": "YYYY-MM-DD" }
+  }
 }
 ```
 
-```json
-{
-  "status": "success",
-  "tiene_cliente_cerrado": false
-}
-```
-
-### Lógica interna:
-1. Autenticar `axon_token` → obtener `usuarios.id` y `rol`
-2. Resolver `partners.id` via `id_usuario`
-3. `SELECT COUNT(*) FROM prospectos WHERE id_partner = :id AND etapa_kanban = 'cerrado'`
-4. Si COUNT > 0 → `true`. Si COUNT = 0 o no existe partner → `false` (fail-safe)
-
-### Comportamiento del frontend (`wallet/page.tsx`):
-- Fetch en `useEffect` al montar el componente
-- Si `tiene_cliente_cerrado === false` → overlay con glassmorphism bloquea sección "Datos de Retiro"
-- Si endpoint falla (catch) → bloquea por seguridad (fail-safe)
-- Si `true` → sección CLABE/CSF/Actualizar disponible
-
-### Reglas de Piedra:
-1. **Fail-safe:** Si el endpoint no responde o devuelve error, el frontend bloquea los datos fiscales. Nunca falla abierto.
-2. **Sin exposición de datos:** El endpoint solo devuelve un booleano. Nunca expone id_partner ni datos del prospecto.
-3. **PDO ATTR_EMULATE_PREPARES = false:** Anti-SQLi nativo por configuración de `conexion.php`.
-4. **Cache-Control: no-store:** El resultado no se cachea en el navegador para garantizar verificación en tiempo real.
+Constantes de negocio: `MH_PROJECTED_PROFIT_MARGIN = 0.40` (utilidad neta proyectada = 40% de ingresos del mes), `MH_IVA_RATE = 0.16` (IVA de ley). Ver `05_MATRIZ_FINANCIERA_Y_VENTAS.md` para el detalle comercial completo.
 
 ---
 
-## 🛠️ CONTRATO 8 — Flujo Completo de consumo_tokens (Orquestador IA)
+## ⚠️ NOTA DE RECONCILIACION — MIGRACION DE ROLES (FASE 5)
 
-**Módulo central:** `CORE/src/AiOrchestrator.php` + `CORE/src/UsageTracker.php`
-**Tabla destino:** `consumo_tokens` (append-only)
-**Monitor frontend:** `z/app/mtx1/admin/consumption-monitor/page.tsx` ← `api/admin/consumption_monitor.php`
-
-### Cadena de escritura (llamada de producción, `trackUsage = true`):
-
-```
-AiOrchestrator::dispatch(messages, idUsuario, contextKey, trackUsage=true)
-  │
-  ├─ callProvider() → respuesta del LLM
-  │     └─ result: {content, modelo_usado, tokens_entrada, tokens_salida, duracion_ms}
-  │
-  ├─ UsageTracker::record()
-  │     └─ INSERT INTO consumo_tokens
-  │            estatus = 'exitoso'    ← valor canónico (ver ENUM abajo)
-  │
-  └─ Logger::sistema(accion='AI_DISPATCH', nivel='info')
-        └─ INSERT INTO log_actividad_sistema
-```
-
-### ENUM canónico de `consumo_tokens.estatus`:
-
-| Valor | Cuándo se usa |
-| :--- | :--- |
-| `exitoso` | Llamada directa exitosa al primer proveedor |
-| `error_proveedor` | El proveedor devolvió HTTP != 200 |
-| `timeout` | cURL timeout agotado |
-| `fallback_activado` | Éxito tras failover a proveedor secundario |
-| `completado` | Alias legacy del patch v5 — equivale a `exitoso` |
-
-**⚠️ Fix registrado:** El patch v5 creó el ENUM con valores incorrectos (`'pendiente','completado','error'`). El patch v7 (`schema_patch_v7_fix_consumo_tokens_enum.sql`) los amplía para incluir los valores canónicos del PHP. Sin el patch v7, `UsageTracker::record()` falla silenciosamente y el monitor siempre muestra ceros.
-
-### Contrato JSON de `consumption_monitor.php`:
-
-**GET `?period=7d|30d|90d|all`** → respuesta canónica:
-```json
-{
-  "status":  "success",
-  "period":  "30d",
-  "kpis": {
-    "total_tokens":     12500,
-    "total_llamadas":   45,
-    "avg_tokens":       277,
-    "costo_total_usd":  0.003750,
-    "usuarios_activos": 3,
-    "avg_latencia_ms":  1240
-  },
-  "porcentaje_proveedores": [
-    {
-      "proveedor_slug":   "openai",
-      "proveedor_nombre": "OpenAI",
-      "prioridad":        10,
-      "total_tokens":     10000,
-      "total_llamadas":   36,
-      "pct_of_total":     80.0
-    }
-  ],
-  "top_usuarios": [
-    {
-      "rank":             1,
-      "id_usuario":       1,
-      "nombre_usuario":   "Admin DCD",
-      "email":            "admin@dcd.com",
-      "id_proveedor":     1,
-      "proveedor":        "OpenAI",
-      "proveedor_slug":   "openai",
-      "total_tokens":     10000,
-      "total_llamadas":   36,
-      "avg_tokens":       277,
-      "costo_usd":        0.003000,
-      "fallback_events":  0,
-      "pct_of_total":     80.0,
-      "ultima_actividad": "2026-05-28T17:00:00"
-    }
-  ]
-}
-```
-
-### Script de diagnóstico (temporal):
-**Ruta:** `api/admin/test_real_dispatch.php`
-**Propósito:** Verificar end-to-end que `AiOrchestrator → UsageTracker → consumo_tokens` funciona.
-**Auth:** Cookie `axon_token` + `rol = super_admin`.
-**⚠️ ELIMINAR antes del deploy a producción (Mandamiento 18).**
-
-### Reglas de Piedra — consumo_tokens:
-1. **`trackUsage = false` en Playground:** El Playground nunca registra consumo real.
-2. **ENUM crítico:** El valor `'exitoso'` debe estar en el ENUM de `consumo_tokens.estatus`.
-3. **Silent fail = zero telemetría:** Un INSERT que falla silenciosamente vacía el monitor — el error_log es la única señal.
-4. **Monitor backward-compatible:** Las queries del monitor usan `IN ('exitoso','completado')` para capturar ambas generaciones del ENUM.
+La migración `database/migration_fase5_rbac_and_native_shows.sql` renombró `'Administrador' → 'Admin'` en `users.role`. Todo el código de `api/*.php` que comparaba contra el string literal `'Administrador'` fue actualizado en esta misma sesión a `['Super_admin', 'Admin']` (`Super_admin` hereda todos los permisos de `Admin`). Archivos corregidos: `agenda.php`, `clients.php`, `programs.php`, `checklist.php`, `inventory.php`, `users.php`, `finance.php`. Antes de esta corrección, ningún usuario podía pasar las verificaciones de rol administrativo tras la migración — quedó documentado como incidente resuelto, no como diseño original.
 
 ---
 
-## 🧠 LÓGICA DE NEGOCIO — REGLAS GLOBALES DE PIEDRA
+## 🌐 ESTANDAR GLOBAL — CODIGOS HTTP DEL SISTEMA
 
-1. **Ruta PHP siempre con `__DIR__`:** Prohibidas las rutas relativas simples (`require_once 'archivo.php'`). Siempre `require_once __DIR__ . '/archivo.php'`.
-2. **Módulo de error nunca al frontend:** `PDOException`, errores de sintaxis SQL, o fallos de API externa van a `error_log()` internamente. El frontend solo recibe mensajes genéricos amigables.
-3. **Blindaje Técnico Universal:** Uso obligatorio de `TRIM`, validación de tipos, `htmlspecialchars()` en salidas HTML, Prepared Statements en todas las queries.
-4. **`cyber_score` de {{PROJECT_NAME}}:** El score se calcula dinámicamente. Los rangos para cotización son: `90-100` = Póliza Sentinel (`[PRECIO_MRR_POLIZA_SENTINEL]` `{{CURRENCY}}`/mes); `70-89` = Plan Básico (~`[PRECIO_SETUP_PLAN_BASICO]` `{{CURRENCY}}`); `0-69` = Plan Seguridad ORO (`[PRECIO_SETUP_PLAN_ORO_MIN]`–`[PRECIO_SETUP_PLAN_ORO_MAX]` `{{CURRENCY}}`). Siempre incluir opción Póliza Sentinel en propuesta.
-
----
-
-## 🌐 ESTÁNDAR GLOBAL — CÓDIGOS HTTP DEL SISTEMA
-
-| Código | Uso |
+| Codigo | Uso |
 | :--- | :--- |
 | `200` | OK — operación exitosa con datos |
-| `201` | Created — recurso creado exitosamente |
-| `204` | No Content — preflight OPTIONS |
-| `400` | Bad Request — payload JSON malformado |
-| `401` | Unauthorized — sin token o token inválido/expirado |
-| `403` | Forbidden — token válido pero sin permisos (rol insuficiente / CORS) |
-| `404` | Not Found — recurso no encontrado |
-| `405` | Method Not Allowed — método HTTP incorrecto |
-| `409` | Conflict — conflicto de estado (ej: cancelar algo ya cancelado) |
-| `415` | Unsupported Media Type — `Content-Type` distinto de `application/json` |
-| `422` | Unprocessable Entity — payload válido pero datos inválidos (validación) |
-| `500` | Internal Server Error — error de servidor (nunca exponer detalles al frontend) |
+| `201` | Created — recurso creado (llamado, asignación, cliente, programa) |
+| `401` | Unauthorized — sin sesión activa (`mh_require_session()`) |
+| `403` | Forbidden — rol insuficiente, o staff sin asignación al llamado, o CSRF inválido |
+| `404` | Not Found — recurso no encontrado (llamado, activo, usuario) |
+| `405` | Method Not Allowed — acción/método no soportado por el endpoint |
+| `409` | Conflict — colisión de agenda, activo ya asignado, estatus incompatible |
+| `422` | Unprocessable Entity — payload incompleto o regla de negocio no satisfecha (ej. anticipo no verificado) |
+| `500` | Internal Server Error — excepción `PDOException` atrapada, registrada en `error_log`, nunca expuesta al frontend |
 
 ---
 
-## 🛡️ PATRÓN CANÓNICO DE ENDPOINT BLINDADO (6 CAPAS)
-
-Todo endpoint nuevo en `/api/` sigue este patrón de 6 capas, sin excepción:
+## 🛡️ PATRON CANONICO DE ENDPOINT (Capas obligatorias en `api/*.php`)
 
 ```php
 <?php
-declare(strict_types=1);
+session_start();
+require_once __DIR__ . '/../config/Database.php';
+require_once __DIR__ . '/csrf.php';
+require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/response.php';
 
-// 1. CORS (siempre primero)
-require_once __DIR__ . '/cors.php';
+$currentUser = mh_require_session();          // 401 si no hay sesión
+$method = $_SERVER['REQUEST_METHOD'];
+$action = $_GET['action'] ?? '';
+$pdo = Database::getInstance()->getConnection();
 
-// 2. AUTH (en endpoints protegidos)
-require_once __DIR__ . '/../CORE/src/jwt.php';
-require_once __DIR__ . '/../CORE/src/auth_middleware.php';
-requireRole(['admin'], $authPayload);
-
-// 3. MÉTODO HTTP
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    jsonResponse('error', 'Método no permitido.', [], 405);
-}
-
-// 4. LEER Y VALIDAR PAYLOAD
-$raw = file_get_contents('php://input');
-$payload = json_decode((string) $raw, true, 512, JSON_THROW_ON_ERROR);
-// ... validaciones estrictas (422 si fallan) ...
-
-// 5. CONEXIÓN A DB
-require_once __DIR__ . '/../CORE/src/conexion.php';
-$pdo = (new Database())->getConnection();
-
-// 6. LÓGICA DE NEGOCIO (con try/catch + log)
 try {
-    $stmt = $pdo->prepare("SELECT * FROM tabla WHERE id = :id");
-    $stmt->execute([':id' => $id]);
-    $result = $stmt->fetchAll();
-    jsonResponse('success', 'Operación exitosa.', $result);
+    if ($method === 'POST' && $action === '...') {
+        mh_require_role($currentUser, ['Super_admin', 'Admin']);   // 403 si el rol no aplica
+        $payload = mh_read_json_body();
+        mh_guard_request($payload, 'contexto');             // Troll Mode
+        mh_require_csrf($payload);                           // CSRF
+
+        // ... validación 422, lógica de negocio, PDO preparado ...
+
+        mh_json_response('success', 'Mensaje.', [...], 200);
+    }
+    mh_json_response('error', 'Accion o metodo no soportado.', [], 405);
 } catch (PDOException $e) {
-    error_log('[' . date('Y-m-d H:i:s') . '] [endpoint] ' . $e->getMessage());
-    jsonResponse('error', 'Error interno. Intente más tarde.', [], 500);
+    error_log('MH-CORE DB error en ' . basename(__FILE__) . ': ' . $e->getMessage());
+    mh_json_response('error', 'Error interno del servidor. Intenta mas tarde.', [], 500);
 }
 ```
 
-**Enforcement — Cero Deriva (JSON Schema):** Por cada endpoint documentado en este pilar, Claude DEBE crear validaciones estrictas en PHP para que la API rechace cargas inválidas con `422` antes de tocar la base de datos. Antes de crear un endpoint nuevo, consultar primero `/knowledge/` y `/CORE/src/` por una clase o helper ya blindado — no reinventar si ya existe.
+Todo endpoint nuevo debe seguir este patrón sin excepción. Antes de crear un endpoint, consultar primero si `api/response.php` ya expone el helper necesario — no reinventar.

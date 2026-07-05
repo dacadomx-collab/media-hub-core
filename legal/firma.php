@@ -27,14 +27,18 @@ $errorMessages = [
 ];
 $errorMessage = $errorMessages[$_GET['error'] ?? ''] ?? '';
 
+// Fase 5.8 — Handshake Legal Condicional: solo se renderizan los
+// documentos que legal_document_roles exige para el rol de la sesion
+// (un Conductor no debe ver/firmar contratos internos de staff).
 $stmt = $pdo->prepare(
     'SELECT d.id, d.code, d.title, d.content, d.version, s.signed
      FROM legal_documents d
      JOIN user_legal_signatures s ON s.document_id = d.id
+     INNER JOIN legal_document_roles ldr ON ldr.document_id = d.id AND ldr.role = :role
      WHERE s.user_id = :user_id
      ORDER BY d.sort_order ASC'
 );
-$stmt->execute(['user_id' => $userId]);
+$stmt->execute(['user_id' => $userId, 'role' => (string) $_SESSION['role']]);
 $documents = $stmt->fetchAll();
 
 $pendingDocuments = array_filter($documents, static fn ($doc) => (int) $doc['signed'] === 0);
@@ -53,6 +57,7 @@ $csrfToken = csrf_token();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Media HUB | Firma Digital de Reglamentos</title>
     <meta name="description" content="Lectura y firma digital obligatoria de reglamentos Media HUB">
+    <link rel="icon" type="image/png" href="../assets/img/logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
@@ -106,9 +111,19 @@ $csrfToken = csrf_token();
                 </div>
                 <small class="field-message">Debe coincidir con el nombre registrado en tu cuenta: <?php echo htmlspecialchars((string) $_SESSION['full_name'], ENT_QUOTES, 'UTF-8'); ?></small>
 
-                <button type="submit">Firmar y Continuar al Dashboard</button>
+                <button type="submit" id="legalSubmitBtn">Firmar y Continuar al Dashboard</button>
             </form>
         </section>
     </main>
+    <script>
+        // Anti Double-Click (Regla de Oro Global): el envio de este formulario
+        // navega a otra pagina, pero un doble clic aun puede duplicar el POST
+        // antes de que el navegador redirija.
+        document.querySelector('.legal-form').addEventListener('submit', function () {
+            var btn = document.getElementById('legalSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Procesando...';
+        });
+    </script>
 </body>
 </html>

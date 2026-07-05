@@ -80,14 +80,20 @@ Tipografias: **Montserrat** (titulos, `font-display`) y **Roboto** (cuerpo de te
 
 ---
 
-## 7. LOS CLIENTES JORNAL (Casos Fundacionales)
+## 7. LOS CLIENTES JORNAL Y SHOWS NATIVOS (Casos Fundacionales)
 
-Media HUB opera bajo el concepto de **"Cliente Jornal"**: un cliente con un programa **recurrente** que se produce de forma periodica, no como evento aislado.
+Media HUB distingue dos modelos de negocio sobre la misma tabla `programs` (ver `02_CODEX_Y_SCHEMA_MAESTRO.md` §2.5, columna `is_native_show`):
 
-- **Medicina del Siglo XXI** (Dr. Efrain Torres) — Programa recurrente de entrevistas a especialistas de la salud, producido en el Estudio 5 de Mayo.
-- **CCBCS** (Efrain Torres) — Programa institucional recurrente del Consejo Coordinador, con produccion y transmision Simulcast.
+**A) Cliente Jornal tradicional** (`is_native_show = 0`, requiere fila en `clients`): un cliente externo con un programa **recurrente** producido de forma periodica en el Estudio 5 de Mayo, facturado bajo el esquema de anticipo del 50%.
 
-Ambos casos viven en las tablas `clients` y `programs` del esquema (ver `02_CODEX_Y_SCHEMA_MAESTRO.md`) y se exhiben como testimoniales en la Landing Page (`index.php`, seccion `#clientes`).
+- **Medicina del Siglo XXI** (Dr. Efrain Torres) — Programa recurrente de entrevistas a especialistas de la salud. ✅ Sembrado (Fase 1).
+- **CCBCS** (Efrain Torres) — Programa institucional, produccion y transmision Simulcast. ✅ Sembrado (Fase 1).
+
+**B) Show Nativo** (`is_native_show = 1`, SIN fila en `clients` — `conductor_user_id` obligatorio, `affiliated_channel` como texto libre del medio/canal afiliado, Fase 5.8): produccion propia de Media HUB conducida por un talento externo (rol `Conductor`), no un cliente que paga por servicio.
+
+- **El Jornal BCS** (David de la Paz) — Canal afiliado (`programs.affiliated_channel`) de 3 shows nativos: *Enfoque 360*, *El Ring* y *En Privado*. Roster confirmado por el Arquitecto (Fase 5.11) — ver `02_CODEX_Y_SCHEMA_MAESTRO.md` §2.5 para el estado de siembra real en BD.
+
+> **Nota de reconciliacion (Fase 5.11):** este roster reemplaza una nota anterior (Fase 5.6) que atribuia *Enfoque 360*/*El Ring*/*En Privado* a un supuesto Cliente Jornal "Consejo Coordinador / Producciones Asociadas" con fila en `clients`. Esa atribucion queda **descartada**: estos 3 shows son Nativos (mecanismo `is_native_show = 1`, ya construido en Fase 5.2/5.7), no Cliente Jornal tradicional. No se crea ninguna fila nueva en `clients` para "El Jornal BCS".
 
 ---
 

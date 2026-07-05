@@ -75,6 +75,28 @@
     el.className = 'mh-feedback text-sm ' + (ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500');
   }
 
+  /**
+   * Regla Anti-Doble-Clic (Codex, decreto obligatorio): todo boton de accion
+   * asincrona se deshabilita y muestra un estado de "Procesando..." mientras
+   * la promesa esta en vuelo. Solo se restaura si la promesa termina en
+   * error -- en exito, el llamador decide (normalmente un re-render lo
+   * reemplaza). Envolver asi: `await withLoadingState(btn, 'Procesando...', async () => { ... })`.
+   */
+  async function withLoadingState(btn, loadingText, fn) {
+    const original = btn.textContent;
+    const wasDisabled = btn.disabled;
+    btn.disabled = true;
+    btn.textContent = loadingText;
+    try {
+      const result = await fn();
+      return result;
+    } catch (err) {
+      btn.disabled = wasDisabled;
+      btn.textContent = original;
+      throw err;
+    }
+  }
+
   /* Bloquea controles de un usuario sobre su propia fila administrativa. */
   function lockIfSelf(id) {
     return id === USER_ID ? 'disabled title="No puedes modificar tu propia cuenta desde aqui"' : '';
@@ -151,6 +173,10 @@
   /* A) PERFIL + MIS OBLIGACIONES (api/users.php?action=me)                */
   /* ==================================================================== */
   async function loadProfile() {
+    // El Conductor no tiene la seccion "Mis Obligaciones" (Fase 5.9 -- fue
+    // sustituida por los accesos rapidos de #conductorHomeCards).
+    if (!$('#obligationsList')) return;
+
     const res = await api('../api/users.php?action=me');
     if (res.status !== 'success') {
       $('#obligationsList').innerHTML = `<p class="text-sm text-red-500">${esc(res.message)}</p>`;
@@ -242,6 +268,10 @@
   let agendaCalls = [];
 
   async function loadAgenda() {
+    // El Conductor no ve la Agenda General (Clientes Jornal) -- gestiona su
+    // propio show desde #mis-invitados (Fase 5.9).
+    if (!$('#agendaList')) return;
+
     const res = await api('../api/agenda.php?action=list');
     if (res.status !== 'success') {
       $('#agendaList').innerHTML = `<p class="text-sm text-red-500">${esc(res.message)}</p>`;
@@ -339,11 +369,11 @@
     const btn         = e.currentTarget;
     const callId      = Number(btn.dataset.call);
     const advancePaid = btn.dataset.advance === '1';
-    btn.disabled = true;
-    const res = await api('../api/agenda.php?action=verify_advance', {
+
+    const res = await withLoadingState(btn, 'Procesando...', () => api('../api/agenda.php?action=verify_advance', {
       method: 'PUT',
       body: { call_id: callId, advance_paid: advancePaid },
-    });
+    }));
     if (res.status !== 'success') alert(res.message);
     loadAgenda();
   }
@@ -352,6 +382,8 @@
     const sel    = e.currentTarget;
     const callId = Number(sel.dataset.call);
     const status = sel.value;
+    sel.disabled = true;
+
     const res = await api('../api/agenda.php?action=update_status', {
       method: 'PUT',
       body: { call_id: callId, status },
@@ -424,6 +456,8 @@
 
   function bindChecklistSelect() {
     const sel = $('#checklistCallSelect');
+    if (!sel) return;
+
     sel.addEventListener('change', () => {
       const callId = Number(sel.value);
       if (!callId) {
@@ -514,6 +548,10 @@
   let inventoryData = { inventory_items: [], fleet_vehicles: [] };
 
   async function loadInventory() {
+    // El Conductor no ve Inventario y Flota (Fase 5.9 -- no es parte de sus
+    // tareas operativas).
+    if (!$('#inventoryItemsBody')) return;
+
     const res = await api('../api/inventory.php?action=list');
     if (res.status !== 'success') {
       $('#inventoryItemsBody').innerHTML = `<tr><td colspan="3" class="py-3 text-red-500 text-sm">${esc(res.message)}</td></tr>`;
@@ -582,11 +620,10 @@
     const assetId = Number(btn.dataset.assetId);
     if (!confirm('Confirmas marcar esta unidad como Mantenimiento?')) return;
 
-    btn.disabled = true;
-    const res = await api('../api/inventory.php?action=set_maintenance', {
+    const res = await withLoadingState(btn, 'Procesando...', () => api('../api/inventory.php?action=set_maintenance', {
       method: 'POST',
       body: { asset_type: 'Vehiculo', asset_id: assetId },
-    });
+    }));
     if (res.status !== 'success') alert(res.message);
     loadInventory();
   }
@@ -632,11 +669,10 @@
 
   async function onCheckout(e) {
     const btn = e.currentTarget;
-    btn.disabled = true;
-    const res = await api('../api/inventory.php?action=checkout', {
+    const res = await withLoadingState(btn, 'Procesando...', () => api('../api/inventory.php?action=checkout', {
       method: 'POST',
       body: { asset_type: 'Inventario', asset_id: Number(btn.dataset.assetId), call_id: currentCallId },
-    });
+    }));
     if (res.status !== 'success') alert(res.message);
     await loadInventory();
   }
@@ -654,8 +690,7 @@
       return;
     }
 
-    btn.disabled = true;
-    const res = await api('../api/inventory.php?action=checkin', {
+    const res = await withLoadingState(btn, 'Procesando...', () => api('../api/inventory.php?action=checkin', {
       method: 'POST',
       body: {
         asset_type: 'Inventario',
@@ -664,7 +699,7 @@
         damaged,
         condition_notes: notes.value.trim(),
       },
-    });
+    }));
     if (res.status !== 'success') alert(res.message);
     await loadInventory();
   }
@@ -672,8 +707,8 @@
   /* ==================================================================== */
   /* D) PANEL ADMINISTRATIVO MULTI-ROL (api/users.php)                     */
   /* ==================================================================== */
-  const ROLE_OPTIONS   = ['Administrador', 'Lider_Proyecto', 'Staff_Tecnico', 'Lider_Logistica', 'Cliente'];
-  const STATUS_OPTIONS = ['Activo', 'Suspendido', 'Troll_Mode'];
+  const ROLE_OPTIONS   = ['Super_admin', 'Admin', 'Lider_Proyecto', 'Staff_Tecnico', 'Lider_Logistica', 'Team', 'Conductor', 'Cliente'];
+  const STATUS_OPTIONS = ['Activo', 'Suspendido', 'Troll_Mode', 'Pendiente'];
 
   async function loadUsers() {
     const body = $('#usersBody');
@@ -689,6 +724,7 @@
   function statusUserBadgeClass(status) {
     switch (status) {
       case 'Activo':     return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400';
+      case 'Pendiente':  return 'bg-sky-500/15 text-sky-600 dark:text-sky-400';
       case 'Suspendido': return 'bg-amber-500/15 text-amber-600 dark:text-amber-400';
       default:           return 'bg-red-500/15 text-red-600 dark:text-red-400';
     }
@@ -720,6 +756,8 @@
         <td class="py-2">
           <div class="flex flex-wrap gap-1.5">
             <button type="button" class="btn-ghost js-save-user" data-id="${u.id}" ${lockIfSelf(u.id)}>Guardar</button>
+            <button type="button" class="btn-ghost js-reset-password" data-email="${esc(u.email)}" ${u.status !== 'Activo' ? 'disabled title="Solo disponible para cuentas Activas"' : ''}>Resetear Contrasena</button>
+            <button type="button" class="btn-ghost js-resend-invite" data-id="${u.id}" ${['Pendiente', 'Suspendido', 'Troll_Mode'].includes(u.status) ? '' : 'disabled title="Solo disponible para Pendiente/Suspendido/Troll Mode"'}>Reenviar invitacion</button>
             <button type="button" class="btn-ghost btn-danger js-suspend-user" data-id="${u.id}" ${u.status === 'Suspendido' || u.id === USER_ID ? 'disabled' : ''}>Suspender</button>
           </div>
         </td>
@@ -728,6 +766,35 @@
 
     $$('.js-save-user', body).forEach((btn) => btn.addEventListener('click', onSaveUser));
     $$('.js-suspend-user', body).forEach((btn) => btn.addEventListener('click', onSuspendUser));
+    $$('.js-reset-password', body).forEach((btn) => btn.addEventListener('click', onResetPassword));
+    $$('.js-resend-invite', body).forEach((btn) => btn.addEventListener('click', onResendInvite));
+  }
+
+  /**
+   * Dispara api/forgot_password.php a nombre del Administrador (Hito 2,
+   * Fase 5.3). Ese endpoint es un procesador de formulario clasico (no
+   * JSON, responde con redirect) reutilizado tal cual -- comparte la
+   * misma sesion PHP del dashboard, por lo que el csrf_token de la sesion
+   * activa es valido. Se ignora el cuerpo de la respuesta (HTML del
+   * redirect); solo importa que la peticion se haya completado.
+   */
+  async function onResetPassword(e) {
+    const btn = e.currentTarget;
+    const email = btn.dataset.email;
+    if (!confirm(`Enviar enlace de restablecimiento de contrasena a ${email}?`)) return;
+
+    try {
+      await withLoadingState(btn, 'Procesando...', () => fetch('../api/forgot_password.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ email, csrf_token: CSRF }).toString(),
+      }));
+      alert(`Enlace de restablecimiento enviado a ${email} (si la cuenta esta Activa).`);
+    } catch (err) {
+      alert('No se pudo conectar con el servidor.');
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   async function onSaveUser(e) {
@@ -737,18 +804,29 @@
     const role   = $('.js-role-select', row).value;
     const status = $('.js-status-select-admin', row).value;
 
-    btn.disabled = true;
-    const res = await api('../api/users.php?action=update', {
+    const res = await withLoadingState(btn, 'Procesando...', () => api('../api/users.php?action=update', {
       method: 'PUT',
       body: { id, role, status },
-    });
-    btn.disabled = false;
+    }));
 
     if (res.status !== 'success') {
+      btn.disabled = false;
+      btn.textContent = 'Guardar';
       alert(res.message);
       return;
     }
-    loadUsers();
+
+    // Feedback visual instantaneo (Fase 5.7): antes esto guardaba en
+    // silencio -- el backend siempre respondia bien, pero sin confirmacion
+    // visible parecia que el clic "no se proceso". Mismo patron que
+    // onCopyGuestLink() (cambio de texto temporal en el boton). loadUsers()
+    // se pospone hasta despues del setTimeout porque re-renderiza toda la
+    // tabla de inmediato -- si se llamara antes, este mismo boton (btn) ya
+    // habria sido reemplazado en el DOM y el cambio de texto seria invisible.
+    btn.textContent = 'Guardado ✓';
+    setTimeout(() => {
+      loadUsers();
+    }, 900);
   }
 
   async function onSuspendUser(e) {
@@ -756,13 +834,38 @@
     const id  = Number(btn.dataset.id);
     if (!confirm('Confirmas suspender a este usuario?')) return;
 
-    btn.disabled = true;
-    const res = await api('../api/users.php?action=deactivate', {
+    const res = await withLoadingState(btn, 'Procesando...', () => api('../api/users.php?action=deactivate', {
       method: 'POST',
       body: { id },
-    });
-    if (res.status !== 'success') alert(res.message);
+    }));
+    if (res.status !== 'success') {
+      btn.disabled = false;
+      btn.textContent = 'Suspender';
+      alert(res.message);
+      return;
+    }
     loadUsers();
+  }
+
+  async function onResendInvite(e) {
+    const btn = e.currentTarget;
+    const id  = Number(btn.dataset.id);
+    if (!confirm('Reenviar invitacion de activacion (Plantilla 1) a este usuario?')) return;
+
+    const res = await withLoadingState(btn, 'Procesando...', () => api('../api/users.php?action=resend_invite', {
+      method: 'POST',
+      body: { id },
+    }));
+
+    if (res.status !== 'success') {
+      btn.disabled = false;
+      btn.textContent = 'Reenviar invitacion';
+      alert(res.message);
+      return;
+    }
+
+    btn.textContent = 'Enviado ✓';
+    setTimeout(() => { loadUsers(); }, 900);
   }
 
   function bindUserForm() {
@@ -772,10 +875,14 @@
       e.preventDefault();
       const body     = Object.fromEntries(new FormData(form).entries());
       const feedback = $('#userFormFeedback');
-      feedback.textContent = 'Guardando...';
-      feedback.className = 'mh-feedback text-sm text-slate-500 dark:text-digital-white/60';
+      const submitBtn = form.querySelector('button[type="submit"]');
+      feedback.textContent = '';
 
-      const res = await api('../api/users.php?action=create', { method: 'POST', body });
+      const res = await withLoadingState(submitBtn, 'Procesando...', () => api('../api/users.php?action=create', { method: 'POST', body }));
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Enviar Invitacion';
+
       if (res.status === 'success') {
         showFeedback(feedback, 'Usuario registrado correctamente. Se envio un correo de bienvenida.', true);
         form.reset();
@@ -784,6 +891,689 @@
         showFeedback(feedback, res.message, false);
       }
     });
+  }
+
+  /* ==================================================================== */
+  /* SHOWS NATIVOS + CONDUCTOR INLINE (Fase 5.2)                           */
+  /* ==================================================================== */
+  const IS_CONDUCTOR = window.MH_IS_CONDUCTOR;
+
+  function scheduleLabel(schedule) {
+    if (!schedule) return 'Sin calendario definido';
+    let parsed = schedule;
+    if (typeof schedule === 'string') {
+      try { parsed = JSON.parse(schedule); } catch (err) { return 'Sin calendario definido'; }
+    }
+    const days  = (parsed.days || []).join(', ') || 'Dias no definidos';
+    const start = parsed.start_time || '--:--';
+    const end   = parsed.end_time || '--:--';
+    return `${days} &middot; ${start} - ${end}`;
+  }
+
+  async function loadNativeShows() {
+    const list = $('#nativeShowsList');
+    if (!list) return;
+    const res = await api('../api/programs.php?action=list_native');
+    if (res.status !== 'success') {
+      list.innerHTML = `<p class="text-sm text-red-500">${esc(res.message)}</p>`;
+      return;
+    }
+    renderNativeShowsList(res.data.programs || []);
+  }
+
+  function renderNativeShowsList(programs) {
+    const list = $('#nativeShowsList');
+    if (!programs.length) {
+      list.innerHTML = '<p class="text-sm text-slate-500 dark:text-digital-white/60">Sin shows nativos registrados todavia.</p>';
+      return;
+    }
+
+    list.innerHTML = programs.map((p) => `
+      <div class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-white/10">
+        ${p.logo_url
+          ? `<img src="../${esc(p.logo_url)}" alt="" class="w-12 h-12 rounded-lg object-cover shrink-0">`
+          : `<div class="w-12 h-12 rounded-lg bg-turquoise/15 grid place-items-center text-turquoise font-display font-bold shrink-0">${esc((p.name || '?').slice(0, 2).toUpperCase())}</div>`
+        }
+        <div class="min-w-0 flex-1">
+          <p class="font-display font-semibold text-sm truncate">${esc(p.name)}</p>
+          <p class="text-xs text-slate-500 dark:text-digital-white/50 truncate">${scheduleLabel(p.production_schedule)}</p>
+          <p class="text-xs text-turquoise">${p.conductor_name ? 'Conductor: ' + esc(p.conductor_name) : 'Sin Conductor asignado'}</p>
+        </div>
+        <span class="badge ${p.is_active ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-slate-400/15 text-slate-500'} shrink-0">${p.is_active ? 'Activo' : 'Inactivo'}</span>
+      </div>
+    `).join('');
+  }
+
+  /**
+   * Componente dinamico de Redes Sociales (Hito 3, Fase 5.3; reutilizado
+   * por el Conductor en Fase 5.11): cero, una o varias filas de
+   * "plataforma + URL". `containerId` permite reusar el mismo componente
+   * en distintos formularios (alta de Show Nativo por Admin vs. ficha
+   * propia del Conductor) sin que sus filas se mezclen.
+   */
+  function addSocialLinkRow(platform, url, containerId) {
+    const container = $('#' + (containerId || 'socialLinksRows'));
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'flex gap-2 js-social-link-row';
+    row.innerHTML = `
+      <input type="text" class="field-input js-social-platform" placeholder="Plataforma (Instagram, YouTube...)" value="${platform ? esc(platform) : ''}" maxlength="60">
+      <input type="url" class="field-input js-social-url" placeholder="https://" value="${url ? esc(url) : ''}" maxlength="255">
+      <button type="button" class="btn-ghost btn-danger js-remove-social-link" aria-label="Quitar">&times;</button>
+    `;
+    container.appendChild(row);
+    row.querySelector('.js-remove-social-link').addEventListener('click', () => row.remove());
+  }
+
+  /* `scope` acota la busqueda de filas a un contenedor especifico -- sin
+     esto, dos formularios con redes sociales en la misma pagina mezclarian
+     sus filas al recolectar. */
+  function collectSocialLinks(scope) {
+    return $$('.js-social-link-row', scope).reduce((acc, row) => {
+      const platform = row.querySelector('.js-social-platform').value.trim();
+      const url = row.querySelector('.js-social-url').value.trim();
+      if (platform || url) acc.push({ platform, url });
+      return acc;
+    }, []);
+  }
+
+  function bindNativeShowForm() {
+    const form = $('#nativeShowForm');
+    if (!form) return;
+
+    const toggle = $('#createConductorToggle');
+    const fields = $('#conductorInlineFields');
+    if (toggle && fields) {
+      toggle.addEventListener('change', () => {
+        fields.classList.toggle('hidden', !toggle.checked);
+      });
+    }
+
+    const addSocialBtn = $('#addSocialLinkBtn');
+    if (addSocialBtn) {
+      addSocialBtn.addEventListener('click', () => addSocialLinkRow());
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const feedback = $('#nativeShowFormFeedback');
+      feedback.textContent = 'Guardando...';
+      feedback.className = 'mh-feedback text-sm text-slate-500 dark:text-digital-white/60';
+
+      $('#socialLinksJsonInput').value = JSON.stringify(collectSocialLinks());
+
+      const formData = new FormData(form);
+      formData.append('csrf_token', CSRF);
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+
+      try {
+        const json = await withLoadingState(submitBtn, 'Procesando...', async () => {
+          const res = await fetch('../api/programs.php?action=create_native', { method: 'POST', body: formData });
+          return res.json();
+        });
+
+        if (json.status === 'success') {
+          showFeedback(feedback, json.message || 'Show nativo creado correctamente.', true);
+          form.reset();
+          $('#socialLinksRows').innerHTML = '';
+          fields.classList.add('hidden');
+          loadNativeShows();
+        } else {
+          showFeedback(feedback, json.message || 'No se pudo crear el show.', false);
+        }
+      } catch (err) {
+        showFeedback(feedback, 'No se pudo conectar con el servidor.', false);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Crear Show Nativo';
+      }
+    });
+  }
+
+  /* ==================================================================== */
+  /* CONSOLA DEL CONDUCTOR (Fase 5.2/5.5/5.8)                              */
+  /* ==================================================================== */
+  let conductorProgramId = null;
+  let conductorShowData  = null;
+  let conductorCalls     = [];
+
+  async function loadConductorShow() {
+    const card = $('#conductorShowCard');
+    if (!card) return;
+
+    const res = await api('../api/programs.php?action=my_native_show');
+    if (res.status !== 'success' || !(res.data.programs || []).length) {
+      card.innerHTML = '<p class="text-sm text-slate-500 dark:text-digital-white/60">Aun no tienes un show nativo asignado. Contacta a un Administrador.</p>';
+      return;
+    }
+
+    const show = res.data.programs[0];
+    conductorProgramId = show.id;
+    conductorShowData  = show;
+
+    card.innerHTML = `
+      <div class="flex items-start gap-4">
+        ${show.logo_url
+          ? `<img src="../${esc(show.logo_url)}" alt="" class="w-16 h-16 rounded-xl object-cover shrink-0">`
+          : `<div class="w-16 h-16 rounded-xl bg-turquoise/15 grid place-items-center text-turquoise font-display font-bold text-xl shrink-0">${esc((show.name || '?').slice(0, 2).toUpperCase())}</div>`
+        }
+        <div class="min-w-0">
+          <h3 class="font-display font-bold text-lg">${esc(show.name)}</h3>
+          ${show.affiliated_channel ? `<p class="text-xs text-turquoise font-semibold mt-0.5">${esc(show.affiliated_channel)}</p>` : ''}
+          <p class="text-sm text-slate-500 dark:text-digital-white/60 mt-1">${esc(show.catalog_description || '')}</p>
+          <p class="text-xs text-turquoise mt-2">${scheduleLabel(show.production_schedule)}</p>
+          ${show.conductor_notes ? `<p class="text-xs text-slate-500 dark:text-digital-white/50 mt-2 italic">${esc(show.conductor_notes)}</p>` : ''}
+        </div>
+      </div>
+    `;
+
+    prefillConductorProfileForm(show);
+    renderConductorHomeCards();
+    loadConductorAgenda();
+    loadGuestLinks();
+  }
+
+  /* ---- Accesos rapidos de Inicio para el Conductor (Fase 5.9) ---- */
+  function renderConductorHomeCards() {
+    const wrap = $('#conductorHomeCards');
+    if (!wrap) return;
+
+    const next = conductorCalls.length ? nextUpcomingCall(conductorCalls) : null;
+    const showName = (conductorShowData && conductorShowData.name) || 'tu programa';
+
+    wrap.innerHTML = `
+      <a href="#mi-programa" class="rounded-2xl border border-slate-200 dark:border-turquoise/10 bg-white dark:bg-[#01243f] p-4 sm:p-5 block hover:border-turquoise transition-colors">
+        <p class="text-xs uppercase tracking-wide text-turquoise font-semibold mb-1">Mi Programa</p>
+        <p class="font-display font-bold text-base">${esc(showName)}</p>
+        <p class="text-xs text-slate-500 dark:text-digital-white/50 mt-1">Ver ficha y editar tus datos</p>
+      </a>
+      <a href="#mis-invitados" class="rounded-2xl border border-slate-200 dark:border-turquoise/10 bg-white dark:bg-[#01243f] p-4 sm:p-5 block hover:border-turquoise transition-colors">
+        <p class="text-xs uppercase tracking-wide text-turquoise font-semibold mb-1">Siguiente Programa</p>
+        ${next
+          ? `<p class="font-display font-bold text-base">${esc(fmtDate(next.call_date))}</p>
+             <p class="text-xs text-slate-500 dark:text-digital-white/50 mt-1">${esc(fmtTime(next.start_time))} - ${esc(fmtTime(next.end_time))} &middot; Gestiona tus invitados</p>`
+          : `<p class="font-display font-bold text-base">Sin llamado agendado</p>
+             <p class="text-xs text-slate-500 dark:text-digital-white/50 mt-1">Aun no hay un proximo llamado</p>`
+        }
+      </a>
+    `;
+  }
+
+  /* ---- Editar Ficha y Contacto (Fase 5.8) ---- */
+  async function prefillConductorProfileForm(show) {
+    const form = $('#conductorProfileForm');
+    if (!form) return;
+
+    form.affiliated_channel.value = show.affiliated_channel || '';
+    form.conductor_notes.value    = show.conductor_notes || '';
+
+    // Redes sociales del show (Fase 5.11): reutiliza el mismo componente
+    // dinamico de filas "plataforma + URL" del alta de Show Nativo.
+    const socialRows = $('#conductorSocialLinksRows');
+    if (socialRows) {
+      socialRows.innerHTML = '';
+      let socialLinks = [];
+      try {
+        socialLinks = show.public_social_links ? JSON.parse(show.public_social_links) : [];
+      } catch (err) {
+        socialLinks = [];
+      }
+      socialLinks.forEach((link) => addSocialLinkRow(link.platform, link.url, 'conductorSocialLinksRows'));
+    }
+
+    const res = await api('../api/users.php?action=me');
+    if (res.status === 'success') {
+      const profile = res.data.profile || {};
+      form.whatsapp.value                       = profile.whatsapp || '';
+      form.show_whatsapp_publicly.checked       = !!Number(profile.show_whatsapp_publicly);
+      form.show_email_publicly.checked          = !!Number(profile.show_email_publicly);
+    }
+  }
+
+  function bindConductorProfileForm() {
+    const toggleBtn = $('#toggleConductorProfileFormBtn');
+    const form      = $('#conductorProfileForm');
+    if (!toggleBtn || !form) return;
+
+    toggleBtn.addEventListener('click', () => {
+      form.classList.toggle('hidden');
+    });
+
+    const addSocialBtn = $('#addConductorSocialLinkBtn');
+    if (addSocialBtn) {
+      addSocialBtn.addEventListener('click', () => addSocialLinkRow(null, null, 'conductorSocialLinksRows'));
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const feedback = $('#conductorProfileFeedback');
+      const submitBtn = form.querySelector('button[type="submit"]');
+      feedback.textContent = '';
+
+      if (!conductorProgramId) {
+        showFeedback(feedback, 'No tienes un show nativo asignado.', false);
+        return;
+      }
+
+      const [profileRes, showRes] = await withLoadingState(submitBtn, 'Procesando...', () => Promise.all([
+        api('../api/users.php?action=update_self', {
+          method: 'PUT',
+          body: {
+            whatsapp:                form.whatsapp.value.trim(),
+            show_whatsapp_publicly:  form.show_whatsapp_publicly.checked,
+            show_email_publicly:     form.show_email_publicly.checked,
+          },
+        }),
+        api('../api/programs.php?action=update_conductor_profile', {
+          method: 'PUT',
+          body: {
+            program_id:           conductorProgramId,
+            affiliated_channel:   form.affiliated_channel.value.trim(),
+            conductor_notes:      form.conductor_notes.value.trim(),
+            public_social_links:  collectSocialLinks($('#conductorSocialLinksRows')),
+          },
+        }),
+      ]));
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Guardar Ficha';
+
+      if (profileRes.status === 'success' && showRes.status === 'success') {
+        showFeedback(feedback, 'Ficha actualizada correctamente.', true);
+        loadConductorShow();
+      } else {
+        showFeedback(feedback, (profileRes.status !== 'success' ? profileRes.message : showRes.message), false);
+      }
+    });
+  }
+
+  /* ---- Agenda de Llamados del show (Fase 5.5) ---- */
+  /* Fase 5.11: la lista visual "Agenda General de Llamados" fue removida
+     por no aportar valor operativo al Conductor (Dead Code). Esta funcion
+     YA NO depende de ningun contenedor de esa lista -- solo obtiene los
+     datos de la agenda del show y alimenta el planner "Siguiente Programa"
+     (#nextCallCard) y los accesos rapidos de Inicio (#conductorHomeCards).
+     Root cause de un bug anterior (Fase 5.10): gatear esta funcion entera
+     con `if (!list) return;` apagaba TODO lo demas en cuanto se removia el
+     contenedor de la lista -- ya no depende de el en absoluto. */
+  async function loadConductorAgenda() {
+    if (!conductorProgramId) return;
+
+    const res = await api(`../api/agenda.php?action=list&program_id=${conductorProgramId}`);
+    if (res.status !== 'success') {
+      conductorCalls = [];
+      renderNextCallCard(conductorCalls);
+      renderConductorHomeCards();
+      return;
+    }
+
+    conductorCalls = res.data.calls || [];
+    renderNextCallCard(conductorCalls);
+    renderConductorHomeCards();
+  }
+
+  /* ---- Siguiente Programa: planner del proximo llamado (Fase 5.8) ---- */
+  function nextUpcomingCall(calls) {
+    const today = new Date().toISOString().slice(0, 10);
+    return calls.find((c) => c.call_date >= today && c.status !== 'Cancelado') || null;
+  }
+
+  /* Fase 5.10 — Automatizacion predictiva: si el Conductor aun no tiene un
+     proximo llamado agendado, se precarga la fecha del proximo miercoles
+     (incluye hoy si hoy ya es miercoles) y el horario institucional por
+     defecto 17:00-17:30. El Conductor puede cambiar ambos libremente. */
+  function nextWednesdayDate() {
+    const d = new Date();
+    const diff = (3 - d.getDay() + 7) % 7;
+    d.setDate(d.getDate() + diff);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function renderNextCallCard(calls) {
+    const wrap = $('#nextCallCard');
+    if (!wrap) return;
+
+    const next = nextUpcomingCall(calls);
+    const guestOptions = [1, 2, 3, 4, 5, 6].map((n) => `<option value="${n}">${n} invitado${n > 1 ? 's' : ''}</option>`).join('');
+
+    const defaults = next
+      ? {
+          call_date: next.call_date,
+          start_time: (next.start_time || '').slice(0, 5),
+          end_time: (next.end_time || '').slice(0, 5),
+          episode_theme: next.episode_theme || '',
+        }
+      : { call_date: nextWednesdayDate(), start_time: '17:00', end_time: '17:30', episode_theme: '' };
+
+    const summary = next
+      ? `<div class="p-3 rounded-xl border border-slate-200 dark:border-white/10">
+          <p class="font-display font-semibold text-sm">${esc(next.title)}</p>
+          <p class="text-xs text-slate-500 dark:text-digital-white/50">${esc(fmtDate(next.call_date))} &middot; ${esc(fmtTime(next.start_time))} - ${esc(fmtTime(next.end_time))} &middot; ${esc(next.location)}</p>
+        </div>`
+      : `<p class="text-sm text-slate-500 dark:text-digital-white/60">Aun no tienes un proximo llamado agendado. Te sugerimos el proximo miercoles a las 5:00 PM &mdash; puedes cambiarlo libremente.</p>`;
+
+    wrap.innerHTML = `
+      ${summary}
+      <form id="nextProgramForm" class="space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <label class="field-label">Fecha
+            <input type="date" name="call_date" class="field-input" value="${esc(defaults.call_date)}" required>
+          </label>
+          <label class="field-label">Hora inicio
+            <input type="time" name="start_time" class="field-input" value="${esc(defaults.start_time)}" required>
+          </label>
+          <label class="field-label">Hora fin
+            <input type="time" name="end_time" class="field-input" value="${esc(defaults.end_time)}" required>
+          </label>
+        </div>
+        <label class="field-label">Tema del episodio
+          <input type="text" name="episode_theme" class="field-input" maxlength="255" value="${esc(defaults.episode_theme)}" placeholder="Ej. Elecciones municipales 2026">
+        </label>
+        <div class="flex flex-wrap items-end gap-2">
+          <label class="field-label">Cuantos invitados
+            <select name="quantity" class="field-input">${guestOptions}</select>
+          </label>
+          <button type="submit" class="btn-primary">Generar Programa e Invitados</button>
+        </div>
+        <p class="mh-feedback text-sm" id="nextProgramFeedback"></p>
+        <div id="batchGuestLinksResult" class="space-y-1"></div>
+      </form>
+    `;
+
+    const form = $('#nextProgramForm', wrap);
+    form.dataset.callId = next ? next.id : '';
+    form.addEventListener('submit', onSaveNextProgram);
+  }
+
+  /* Un solo viaje asincrono (desde la perspectiva del Conductor: un clic,
+     un boton, un estado de carga): primero crea/actualiza el llamado con
+     save_conductor_call, y con el call_id resultante genera el lote de
+     enlaces de invitado en create_batch (Fase 5.10). */
+  async function onSaveNextProgram(e) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const feedback = $('#nextProgramFeedback');
+    const resultBox = $('#batchGuestLinksResult');
+    const btn = form.querySelector('button[type="submit"]');
+    const originalLabel = btn.textContent;
+    feedback.textContent = '';
+    resultBox.innerHTML = '';
+
+    if (!conductorProgramId) {
+      showFeedback(feedback, 'No tienes un show nativo asignado.', false);
+      return;
+    }
+
+    const existingCallId = form.dataset.callId ? Number(form.dataset.callId) : null;
+
+    const res = await withLoadingState(btn, 'Procesando lote...', async () => {
+      const saveRes = await api('../api/agenda.php?action=save_conductor_call', {
+        method: 'POST',
+        body: {
+          program_id:     conductorProgramId,
+          call_id:        existingCallId,
+          call_date:      form.call_date.value,
+          start_time:     form.start_time.value,
+          end_time:       form.end_time.value,
+          episode_theme:  form.episode_theme.value.trim(),
+        },
+      });
+
+      if (saveRes.status !== 'success') {
+        return saveRes;
+      }
+
+      return api('../api/guest_links.php?action=create_batch', {
+        method: 'POST',
+        body: {
+          program_id: conductorProgramId,
+          call_id:    saveRes.data.id,
+          quantity:   Number(form.quantity.value),
+        },
+      });
+    });
+
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+
+    if (res.status === 'success' && res.data && res.data.links) {
+      showFeedback(feedback, res.message, true);
+      const links = res.data.links || [];
+      resultBox.innerHTML = links.map((l, i) => `
+        <div class="flex items-center justify-between gap-2 text-xs p-2 rounded-lg bg-turquoise/5">
+          <span>Invitado ${i + 1}</span>
+          <button type="button" class="btn-ghost js-copy-batch-link" data-token="${esc(l.token)}">Copiar enlace</button>
+        </div>
+      `).join('');
+      $$('.js-copy-batch-link', resultBox).forEach((b) => b.addEventListener('click', onCopyGuestLink));
+      // Nota: NO se vuelve a llamar loadConductorAgenda() aqui -- eso
+      // re-renderiza #nextCallCard por completo (incluido este resultBox
+      // recien pintado con los enlaces para copiar). Solo se refresca la
+      // grilla de estatus de invitados; la agenda historica se actualiza
+      // la proxima vez que el Conductor la abra o pulse "Actualizar".
+      loadGuestLinks();
+    } else {
+      showFeedback(feedback, res.message, false);
+    }
+  }
+
+  /* ==================================================================== */
+  /* SOPORTE (Fase 5.9)                                                    */
+  /* ==================================================================== */
+  function bindSupportForm() {
+    const form = $('#supportForm');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const feedback = $('#supportFeedback');
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const message = form.message.value.trim();
+      feedback.textContent = '';
+
+      if (!message) {
+        showFeedback(feedback, 'Escribe un mensaje antes de enviar.', false);
+        return;
+      }
+
+      const res = await withLoadingState(submitBtn, 'Procesando...', () => api('../api/support.php?action=send', {
+        method: 'POST',
+        body: { message },
+      }));
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Enviar a Media HUB';
+
+      if (res.status === 'success') {
+        showFeedback(feedback, res.message, true);
+        form.reset();
+      } else {
+        showFeedback(feedback, res.message, false);
+      }
+    });
+  }
+
+  /* ---- Estatus de Cintillos y Datos de Invitados (Fase 5.5/5.9) ---- */
+  function completionTone(link) {
+    if (link.status === 'Expirado' && !link.completion.has_submission) {
+      return 'gray';
+    }
+    if (!link.completion.has_submission) {
+      return 'gray';
+    }
+    if (link.completion.required_done < link.completion.required_total) {
+      return 'red';
+    }
+    if (link.completion.optional_done < link.completion.optional_total) {
+      return 'amber';
+    }
+    return 'green';
+  }
+
+  const COMPLETION_TONE_CLASSES = {
+    gray:  'bg-slate-400/15 text-slate-500',
+    red:   'bg-red-500/15 text-red-600 dark:text-red-400',
+    amber: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+    green: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+  };
+
+  async function loadGuestLinks() {
+    const grid = $('#guestLinksGrid');
+    if (!grid || !conductorProgramId) return;
+
+    const res = await api(`../api/guest_links.php?action=list&program_id=${conductorProgramId}`);
+    if (res.status !== 'success') {
+      grid.innerHTML = `<p class="text-sm text-red-500">${esc(res.message)}</p>`;
+      return;
+    }
+
+    renderGuestLinksGrid(res.data.links || []);
+  }
+
+  function renderGuestLinksGrid(links) {
+    const grid = $('#guestLinksGrid');
+    if (!links.length) {
+      grid.innerHTML = '<p class="text-sm text-slate-500 dark:text-digital-white/60 sm:col-span-2 lg:col-span-3">Aun no has generado enlaces.</p>';
+      return;
+    }
+
+    const OPTIONAL_FIELD_LABELS = {
+      social_links:   'Redes sociales',
+      whatsapp:       'WhatsApp',
+      website:        'Web',
+      invite_message: 'Mensaje',
+    };
+
+    grid.innerHTML = links.map((l) => {
+      const tone = completionTone(l);
+      const toneClass = COMPLETION_TONE_CLASSES[tone];
+      const callInfo = l.call_title
+        ? `<p class="text-xs text-turquoise truncate">${esc(l.call_title)} &middot; ${esc(l.call_date)} ${esc(l.start_time)}</p>`
+        : '<p class="text-xs text-slate-400">Enlace suelto (sin llamado atado)</p>';
+
+      // Monitor OBS (Fase 5.4/5.5): badges individuales por campo obligatorio.
+      const requiredBadges = Object.entries(l.completion.required_fields || {}).map(([field, done]) => `
+        <span class="badge ${done ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-slate-400/15 text-slate-500'}">
+          ${done ? '&#10003;' : '&#10007;'} ${field === 'full_name' ? 'Nombre' : 'Puesto'}
+        </span>
+      `).join('');
+
+      // Campos opcionales vacios se normalizan a "" / [] en el backend
+      // (nunca null) -- si el monitor detecta que faltan, se avisa por
+      // consola para que produccion/OBS sepa que aun no hay dato real.
+      if (l.completion.optional_done < l.completion.optional_total) {
+        console.warn('[MH-OBS-MONITOR] Datos opcionales vacios para el invitado, inicializados como array seguro.', {
+          link_id: l.id,
+          guest: l.guest_full_name || '(sin nombre aun)',
+        });
+      }
+
+      const optionalBadges = Object.entries(l.completion.optional_fields || {}).map(([field, done]) => `
+        <span class="badge ${done ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'}">
+          ${done ? '&#10003;' : '&#8226;'} ${OPTIONAL_FIELD_LABELS[field] || field}
+        </span>
+      `).join('');
+
+      return `
+        <div class="rounded-xl border border-slate-200 dark:border-white/10 p-3 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="font-display font-semibold text-sm truncate">${l.guest_full_name ? esc(l.guest_full_name) : '<span class="text-slate-400">Invitado sin datos</span>'}</p>
+              ${l.guest_title_position ? `<p class="text-xs text-slate-500 dark:text-digital-white/50 truncate">${esc(l.guest_title_position)}</p>` : ''}
+            </div>
+            <span class="badge ${toneClass} shrink-0">${l.status === 'Expirado' ? 'Expirado' : 'Activo'}</span>
+          </div>
+          ${callInfo}
+          <div>
+            <p class="text-[11px] text-slate-500 dark:text-digital-white/50 mb-0.5">Obligatorios (listo para el generador de caracteres)</p>
+            <div class="flex flex-wrap gap-1">${requiredBadges}</div>
+          </div>
+          <div>
+            <p class="text-[11px] text-slate-500 dark:text-digital-white/50 mb-0.5">Opcionales (difusion/redes)</p>
+            <div class="flex flex-wrap gap-1">${optionalBadges}</div>
+          </div>
+          <p class="text-[11px] text-slate-400">Clic ${Math.min(l.click_count, 3)}/3</p>
+          <button type="button" class="btn-ghost w-full js-copy-link" data-token="${esc(l.token)}" ${l.status === 'Expirado' ? 'disabled' : ''}>Copiar enlace</button>
+        </div>
+      `;
+    }).join('');
+
+    $$('.js-copy-link', grid).forEach((btn) => btn.addEventListener('click', onCopyGuestLink));
+  }
+
+  async function onCopyGuestLink(e) {
+    const btn = e.currentTarget;
+    const url = `${window.location.origin}${window.location.pathname.replace('dashboard/index.php', '')}guest_form.php?token=${btn.dataset.token}`;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      const original = btn.textContent;
+      btn.textContent = 'Copiado!';
+      setTimeout(() => { btn.textContent = original; }, 1800);
+    } catch (err) {
+      alert('No se pudo copiar automaticamente. Enlace: ' + url);
+    }
+  }
+
+  async function onGenerateGuestLink(e) {
+    const feedback = $('#guestLinkFeedback');
+    if (!conductorProgramId) {
+      showFeedback(feedback, 'No tienes un show nativo asignado.', false);
+      return;
+    }
+
+    const callId = e && e.currentTarget ? e.currentTarget.dataset.callId : undefined;
+    const btn = e && e.currentTarget ? e.currentTarget : $('#generateGuestLinkBtn');
+    const originalLabel = btn.textContent;
+
+    feedback.textContent = '';
+
+    const body = { program_id: conductorProgramId };
+    if (callId) body.call_id = Number(callId);
+
+    const res = await withLoadingState(btn, 'Procesando...', () => api('../api/guest_links.php?action=create', { method: 'POST', body }));
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+
+    if (res.status === 'success') {
+      showFeedback(feedback, 'Enlace generado correctamente.', true);
+      loadGuestLinks();
+    } else {
+      showFeedback(feedback, res.message, false);
+    }
+  }
+
+  /* ==================================================================== */
+  /* PRUEBA DE HUMO — FLUJO COMPLETO DE ONBOARDING (Fase 5.2)              */
+  /* ==================================================================== */
+  async function onSmokeTest() {
+    const feedback = $('#smokeTestFeedback');
+    const btn = $('#smokeTestBtn');
+    if (!confirm('Esto creara un usuario de prueba REAL (rol Team) y enviara un correo a la bandeja de pruebas configurada. Continuar?')) return;
+
+    feedback.textContent = '';
+
+    const stamp = Date.now();
+    const res = await withLoadingState(btn, 'Procesando...', () => api('../api/users.php?action=create', {
+      method: 'POST',
+      body: {
+        full_name: 'Usuario Prueba de Humo',
+        email: `smoke.test.${stamp}@mediahubbcs.com`,
+        role: 'Team',
+      },
+    }));
+
+    btn.disabled = false;
+    btn.textContent = 'Simular Flujo Onboarding completo';
+
+    if (res.status === 'success') {
+      showFeedback(feedback, 'Usuario de prueba creado. Revisa la bandeja de pruebas configurada en .env para la Plantilla 1, completa set_password.php y confirma la Plantilla 2.', true);
+      loadUsers();
+    } else {
+      showFeedback(feedback, res.message, false);
+    }
   }
 
   /* ==================================================================== */
@@ -796,14 +1586,29 @@
     bindChecklistTabs();
     bindCallForm();
     bindUserForm();
+    // Fase 5.11: #supportForm ahora vive en la pagina aislada
+    // dashboard/support.php -- bindSupportForm() se auto-descarta (no-op)
+    // en cualquier pagina donde ese formulario no exista.
+    bindSupportForm();
 
     $('#themeToggle').addEventListener('click', toggleTheme);
     $('#sidebarToggle').addEventListener('click', openSidebar);
     $('#sidebarClose').addEventListener('click', closeSidebar);
     $('#sidebarOverlay').addEventListener('click', closeSidebar);
-    $('#refreshObligationsBtn').addEventListener('click', loadProfile);
-    $('#refreshAgendaBtn').addEventListener('click', loadAgenda);
-    $('#refreshInventoryBtn').addEventListener('click', loadInventory);
+
+    // Fase 5.9: #refreshObligationsBtn/#refreshAgendaBtn/#refreshInventoryBtn
+    // viven dentro de secciones que ya NO se renderizan para el Conductor
+    // (#inicio muestra #conductorHomeCards en su lugar; #agenda/#inventario
+    // quedan ocultas por completo) -- sin esta guarda, addEventListener
+    // sobre null tronaba de forma sincrona y congelaba TODO el resto del
+    // handler de DOMContentLoaded (root cause del Fase 5.10).
+    const refreshObligationsBtn = $('#refreshObligationsBtn');
+    if (refreshObligationsBtn) refreshObligationsBtn.addEventListener('click', loadProfile);
+    const refreshAgendaBtn = $('#refreshAgendaBtn');
+    if (refreshAgendaBtn) refreshAgendaBtn.addEventListener('click', loadAgenda);
+    const refreshInventoryBtn = $('#refreshInventoryBtn');
+    if (refreshInventoryBtn) refreshInventoryBtn.addEventListener('click', loadInventory);
+
     bindBackToTop();
 
     loadProfile();
@@ -818,6 +1623,21 @@
       loadKpis();
       const kpiBtn = $('#refreshKpisBtn');
       if (kpiBtn) kpiBtn.addEventListener('click', loadKpis);
+
+      bindNativeShowForm();
+      loadNativeShows();
+      const nativeBtn = $('#refreshNativeShowsBtn');
+      if (nativeBtn) nativeBtn.addEventListener('click', loadNativeShows);
+
+      const smokeBtn = $('#smokeTestBtn');
+      if (smokeBtn) smokeBtn.addEventListener('click', onSmokeTest);
+    }
+
+    if (IS_CONDUCTOR) {
+      bindConductorProfileForm();
+      loadConductorShow();
+      const genBtn = $('#generateGuestLinkBtn');
+      if (genBtn) genBtn.addEventListener('click', onGenerateGuestLink);
     }
 
     loadAgenda();

@@ -25,6 +25,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Media HUB | Estudio 5 de Mayo - La Paz, BCS</title>
 <meta name="description" content="Media HUB: terminal inteligente de produccion audiovisual en La Paz, BCS. Estudio 5 de Mayo, unidades moviles y transmision Simulcast en vivo.">
+<link rel="icon" type="image/png" href="assets/img/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
@@ -86,6 +87,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
       <nav class="hidden md:flex items-center gap-6 text-sm font-medium">
         <a href="#estudio" class="hover:text-turquoise transition-colors">Estudio</a>
         <a href="#simulcast" class="hover:text-turquoise transition-colors">Simulcast</a>
+        <a href="#programas" class="hover:text-turquoise transition-colors">Programas</a>
         <a href="#clientes" class="hover:text-turquoise transition-colors">Clientes Jornal</a>
         <a href="#contacto" class="hover:text-turquoise transition-colors">Contacto</a>
       </nav>
@@ -112,6 +114,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
       <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-col gap-3 text-sm font-medium">
         <a href="#estudio" class="hover:text-turquoise transition-colors">Estudio</a>
         <a href="#simulcast" class="hover:text-turquoise transition-colors">Simulcast</a>
+        <a href="#programas" class="hover:text-turquoise transition-colors">Programas</a>
         <a href="#clientes" class="hover:text-turquoise transition-colors">Clientes Jornal</a>
         <a href="#contacto" class="hover:text-turquoise transition-colors">Contacto</a>
       </div>
@@ -244,6 +247,43 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
     </div>
   </section>
 
+  <!-- ============ PROGRAMAS NATIVOS (ARF-GRID) ============ -->
+  <section id="programas" class="py-16 sm:py-24">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto mb-12">
+        <span class="text-turquoise font-display font-bold text-sm uppercase tracking-widest">Contenido propio</span>
+        <h2 class="font-display font-extrabold text-3xl sm:text-4xl mt-2 mb-4">Nuestros Programas</h2>
+        <p class="text-deep-sea/70 dark:text-digital-white/70">
+          Shows nativos de Media HUB, producidos en el Estudio 5 de Mayo con conduccion propia.
+        </p>
+      </div>
+
+      <!-- Contenedor padre ARF-Grid: flex + flex-wrap + justify-center, sin anchos fijos en px -->
+      <div id="programasGrid" class="flex flex-wrap justify-center gap-6" aria-live="polite">
+        <p id="programasLoading" class="text-sm text-deep-sea/50 dark:text-digital-white/50">Cargando programas&hellip;</p>
+      </div>
+
+      <!-- ============ HIGHLIGHTS (placeholder responsivo para clips editados) ============ -->
+      <div class="mt-16">
+        <h3 class="font-display font-bold text-xl mb-6 text-center">Highlights</h3>
+        <div class="flex flex-wrap justify-center gap-4">
+          <div class="w-full sm:basis-[47%] lg:basis-[23%] max-w-sm aspect-[9/16] rounded-2xl border border-dashed border-turquoise/30 bg-[#f4fbfb] dark:bg-[#031f3c] grid place-items-center text-xs text-deep-sea/40 dark:text-digital-white/40">
+            Proximamente
+          </div>
+          <div class="w-full sm:basis-[47%] lg:basis-[23%] max-w-sm aspect-[9/16] rounded-2xl border border-dashed border-turquoise/30 bg-[#f4fbfb] dark:bg-[#031f3c] grid place-items-center text-xs text-deep-sea/40 dark:text-digital-white/40">
+            Proximamente
+          </div>
+          <div class="w-full sm:basis-[47%] lg:basis-[23%] max-w-sm aspect-[9/16] rounded-2xl border border-dashed border-turquoise/30 bg-[#f4fbfb] dark:bg-[#031f3c] grid place-items-center text-xs text-deep-sea/40 dark:text-digital-white/40">
+            Proximamente
+          </div>
+          <div class="w-full sm:basis-[47%] lg:basis-[23%] max-w-sm aspect-[9/16] rounded-2xl border border-dashed border-turquoise/30 bg-[#f4fbfb] dark:bg-[#031f3c] grid place-items-center text-xs text-deep-sea/40 dark:text-digital-white/40">
+            Proximamente
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ CLIENTES JORNAL / TESTIMONIALES ============ -->
   <section id="clientes" class="py-16 sm:py-24 bg-[#f4fbfb] dark:bg-[#031f3c]">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -348,6 +388,11 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
             </div>
             <small class="field-message" id="passwordMessage" aria-live="polite"></small>
 
+            <label class="login-remember" for="remember_me">
+              <input type="checkbox" id="remember_me" name="remember_me" value="1">
+              <span>Mantener sesion iniciada por 60 dias</span>
+            </label>
+
             <button type="submit" id="submitBtn">Ingresar al HUB</button>
             <p class="system-message<?php echo $loginError !== '' ? ' error' : ''; ?>" id="systemMessage" aria-live="polite"><?php echo htmlspecialchars($loginError, ENT_QUOTES, 'UTF-8'); ?></p>
             <?php if ($loginInfo !== ''): ?>
@@ -399,6 +444,7 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
   </div>
 
   <script src="assets/js/login.js" defer></script>
+  <script src="assets/js/programas-catalog.js" defer></script>
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -462,6 +508,11 @@ $loginInfo = $loginInfos[$_GET['info'] ?? ''] ?? '';
     <?php if ($loginError !== '' || $loginInfo !== ''): ?>
     openLoginModal();
     <?php endif; ?>
+
+    // ---- Auto-apertura via #login (CTA de correo "Cuenta Activada", Fase 5.1) ----
+    if (window.location.hash === '#login') {
+      openLoginModal();
+    }
 
     // ---- Modal Recuperar Contrasena ----
     const forgotModal = document.getElementById('forgotModal');
