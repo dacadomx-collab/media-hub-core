@@ -14,6 +14,14 @@ Document Root (File System Location): /public_html/mediahub
 C:\xampp\htdocs\MediaHUB
 https://github.com/dacadomx-collab/media-hub-core.git
 ********************************************************************************
+Correo Gmail
+******************
+user: mediahubbcs@gmail.com
+pass: m3d14.Hu8
+******************
+user: jolnaldelapaz@gmail.com
+pass: J0rn41.P4z
+******************
 C:\xampp\htdocs\MediaHUB
 Correr servidor
 npm run dev
@@ -67,7 +75,7 @@ https://www.instagram.com/mediahubBCS
 Super Admin
 user: davidcabrera@mediahubbcs.com
 pass: MediaHub2026!
-
+Pepe Pecas
 user: dacado12_mx@hotmail.com
 pass: Dacado127.
 
